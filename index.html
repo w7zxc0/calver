@@ -1,0 +1,1678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Calver - Management</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#121317;
+    --panel:#1A1C21;
+    --panel-raised:#1F2127;
+    --ink:#ECEDF0;
+    --ink-soft:#8B909B;
+    --ink-faint:#5B5F68;
+    --line:#2B2D33;
+    --accent:#D9D4C5;
+    --blue:#7FB4E3;
+    --blue-bg:rgba(127,180,227,0.14);
+    --amber:#E3A94E;
+    --amber-bg:rgba(227,169,78,0.13);
+    --red:#E2685A;
+    --red-bg:rgba(226,104,90,0.14);
+    --green:#6FBF95;
+    --green-bg:rgba(111,191,149,0.13);
+    --violet:#B39CE0;
+    --violet-bg:rgba(179,156,224,0.14);
+    --slate-bg:rgba(255,255,255,0.05);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Lato',-apple-system,Segoe UI,sans-serif;
+    font-size:14.5px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:'Lato',ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums;}
+
+  .shell{ max-width:980px; margin:0 auto; padding:28px 20px 90px; }
+
+  header.top{
+    display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+    border-bottom:1px solid var(--line); padding-bottom:16px; margin-bottom:6px; flex-wrap:wrap;
+  }
+  header.top h1{ font-family:'Lato',sans-serif; font-weight:900; font-size:21px; margin:0; letter-spacing:-0.01em; color:var(--ink); }
+  header.top .date{ color:var(--ink-soft); font-size:12px; }
+
+  nav.tabs{
+    display:flex; gap:4px; margin:20px 0 22px; background:var(--panel);
+    border:1px solid var(--line); padding:4px; border-radius:9px;
+  }
+  nav.tabs button{
+    background:none; border:none; flex:1; padding:9px 14px; font-size:13.5px; color:var(--ink-soft);
+    cursor:pointer; border-radius:6px; font-family:inherit; font-weight:600; transition:background .15s ease, color .15s ease;
+  }
+  nav.tabs button.active{ color:var(--paper); background:var(--accent); }
+  nav.tabs button:not(.active):hover{ color:var(--ink); background:var(--panel-raised); }
+
+  .view{ display:none; }
+  .view.active{ display:block; }
+
+  /* ---- stats bar ---- */
+  .stats-bar{ display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
+  .stat{ background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:10px 14px; flex:1; min-width:110px; text-align:center; }
+  .stat-num{ display:block; font-size:19px; font-weight:900; color:var(--ink); }
+  .stat-label{ display:block; font-size:10px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.05em; margin-top:2px; }
+  .stat.stat-warn .stat-num{ color:var(--red); }
+
+  /* ---- dashboard side-by-side ---- */
+  .dash-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start; }
+  @media(max-width:760px){ .dash-grid{ grid-template-columns:1fr; } }
+
+  .panel{ background:var(--panel); border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .panel h2{
+    font-size:11.5px; text-transform:uppercase; letter-spacing:0.06em; font-weight:700; color:var(--ink-soft);
+    margin:0; padding:12px 14px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center;
+  }
+  .panel h2 .count{ background:var(--slate-bg); color:var(--ink-soft); font-size:10.5px; padding:1px 8px; border-radius:9px; font-weight:700; }
+  .panel.urgent h2 .count{ background:var(--red-bg); color:var(--red); }
+  .panel .empty{ padding:16px 14px; color:var(--ink-faint); font-size:13px; }
+
+  .due-row{ padding:11px 14px; border-bottom:1px solid var(--line); display:flex; gap:10px; align-items:flex-start; }
+  .due-row:last-of-type{ border-bottom:none; }
+  .due-row input[type=checkbox]{ margin-top:3px; accent-color:var(--accent); width:16px; height:16px; flex:none; }
+  .due-row .txt{ flex:1; min-width:0; }
+  .due-row .txt .name{ font-weight:600; color:var(--ink); font-size:13.5px; }
+  .due-row .txt .sub{ color:var(--ink-soft); font-size:12px; margin-top:3px; }
+  .due-row .tags{ display:flex; flex-direction:column; align-items:flex-end; gap:5px; flex:none; }
+
+  /* ---- low-key labels ---- */
+  .label-pill{ font-size:10.5px; padding:3px 8px; border-radius:6px; font-weight:600; white-space:nowrap; }
+  .mine-pill{ background:var(--blue-bg); color:var(--blue); font-weight:700; }
+  .unassigned-pill{ background:var(--slate-bg); color:var(--ink-faint); }
+
+  .due-field{ display:inline-flex; align-items:center; gap:4px; }
+  .due-chip{ font-size:11px; font-weight:600; color:var(--ink-soft); display:inline-flex; align-items:center; gap:5px; }
+  .due-chip::before{ content:''; width:5px; height:5px; border-radius:50%; background:currentColor; opacity:.55; flex:none; }
+  .due-chip.overdue{ color:var(--red); }
+  .due-chip.soon{ color:var(--amber); }
+  .due-chip.none{ color:var(--ink-faint); font-weight:400; }
+  .due-chip.none::before{ display:none; }
+  .edit-ico{ background:none; border:none; color:var(--ink-faint); cursor:pointer; font-size:10.5px; padding:0 2px; opacity:.65; }
+  .edit-ico:hover{ opacity:1; color:var(--ink-soft); }
+  .due-edit-input{ font-family:inherit; font-size:11px; padding:2px 5px; border:1px solid var(--line); background:var(--panel-raised); color:var(--ink); border-radius:5px; color-scheme:dark; }
+
+  .rm{ background:none; border:none; color:var(--ink-faint); cursor:pointer; font-size:14px; padding:2px 4px; border-radius:5px; line-height:1; font-family:inherit; flex:none; }
+  .rm:hover{ color:var(--red); background:rgba(226,104,90,0.1); }
+  .rm:disabled{ opacity:.3; cursor:default; }
+  .rm:disabled:hover{ background:none; color:var(--ink-faint); }
+
+  .proj-card{ background:var(--panel); border:1px solid var(--line); border-radius:10px; margin-bottom:12px; overflow:hidden; transition:background .15s ease, border-color .15s ease; }
+  .proj-card.tint-done{ background:linear-gradient(var(--green-bg), var(--green-bg)), var(--panel); border-color:rgba(111,191,149,0.35); }
+  .proj-head{ display:flex; justify-content:space-between; align-items:center; padding:14px; cursor:pointer; transition:background .12s ease; gap:10px; }
+  .proj-head:hover{ background:var(--panel-raised); }
+  .proj-head .left{ display:flex; align-items:center; gap:10px; min-width:0; }
+  .proj-head .chevron{ color:var(--ink-faint); font-size:11px; width:12px; flex:none; }
+  .proj-name{ font-weight:700; font-size:15px; color:var(--ink); }
+  .proj-meta{ color:var(--ink-soft); font-size:12px; margin-top:2px; }
+
+  .status-select{
+    font-family:inherit; font-size:10.5px; text-transform:uppercase; letter-spacing:0.03em; font-weight:700;
+    padding:5px 10px; border-radius:6px; border:none; cursor:pointer; flex:none;
+  }
+  .status-select option{ background:var(--panel); color:var(--ink); }
+
+  .proj-body{ border-top:1px solid var(--line); padding:12px 14px 14px; display:none; background:var(--paper); }
+  .proj-body.open{ display:block; }
+
+  .task-row{ display:flex; align-items:flex-start; gap:8px; padding:8px 0; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  .task-row:last-of-type{ border-bottom:none; }
+  .task-row input[type=checkbox]{ margin-top:3px; accent-color:var(--accent); width:16px; height:16px; }
+  .task-row .t-text{ flex:1 1 140px; font-size:13.5px; color:var(--ink); min-width:100px; }
+  .task-row.done .t-text{ text-decoration:line-through; color:var(--ink-faint); }
+  .task-row .t-due-wrap{ display:flex; align-items:center; gap:4px; padding-top:4px; }
+
+  select.assignee-select{
+    font-family:inherit; font-size:11.5px; border:1px solid var(--line); background:var(--panel); color:var(--ink);
+    padding:5px 7px; border-radius:6px; max-width:120px;
+  }
+
+  .add-row{ display:flex; gap:6px; margin-top:12px; flex-wrap:wrap; align-items:center; }
+  .add-row input[type=text]{ flex:1 1 160px; min-width:140px; padding:8px 10px; border:1px solid var(--line); background:var(--panel); color:var(--ink); border-radius:7px; font-family:inherit; font-size:13px; }
+  .add-row input[type=date]{ padding:8px 10px; border:1px solid var(--line); background:var(--panel); color:var(--ink); border-radius:7px; font-family:inherit; font-size:12.5px; color-scheme:dark; }
+  .add-row select{ padding:8px 10px; border:1px solid var(--line); background:var(--panel); color:var(--ink); border-radius:7px; font-family:inherit; font-size:12.5px; color-scheme:dark; }
+  .add-row input[type=color]{ width:36px; height:36px; padding:0; border:1px solid var(--line); border-radius:7px; background:none; cursor:pointer; }
+  .add-row button, .btn{ padding:8px 14px; border:1px solid var(--accent); background:var(--accent); color:var(--paper); border-radius:7px; font-family:inherit; font-size:12.5px; font-weight:700; cursor:pointer; transition:opacity .12s ease; }
+  .add-row button:hover, .btn:hover{ opacity:0.85; }
+
+  .notes-field{ width:100%; border:1px solid var(--line); background:var(--panel); color:var(--ink); font-family:inherit; font-size:12.5px; padding:8px 10px; margin-top:10px; resize:vertical; min-height:36px; border-radius:7px; }
+  .notes-field::placeholder{ color:var(--ink-faint); }
+
+  .new-project-box{ background:var(--panel); border:1px dashed var(--line); padding:14px; margin-bottom:16px; border-radius:10px; }
+  .new-project-box .row{ display:flex; gap:8px; flex-wrap:wrap; }
+  .new-project-box input[type=text]{ flex:2; min-width:180px; padding:9px 10px; border:1px solid var(--line); background:var(--paper); color:var(--ink); border-radius:7px; font-family:inherit; font-size:13px; }
+  .new-project-box select{ padding:9px 10px; border:1px solid var(--line); background:var(--paper); color:var(--ink); border-radius:7px; font-family:inherit; font-size:13px; color-scheme:dark; }
+
+  .aq-row{ background:var(--panel-raised); border:1px solid var(--line); border-radius:9px; padding:12px 13px; margin:0 14px 10px; display:flex; gap:12px; align-items:flex-start; }
+  .aq-row:last-of-type{ margin-bottom:0; }
+  .aq-row .body{ flex:1; min-width:0; }
+  .aq-row .q{ font-weight:600; font-size:13.5px; color:var(--ink); }
+  .aq-row .link{ color:var(--ink-soft); font-size:11.5px; margin-top:3px; }
+  .aq-row .right{ display:flex; flex-direction:column; align-items:flex-end; gap:8px; flex:none; }
+  .aq-row .right select.assignee-select{ max-width:130px; }
+  .aq-status{ font-size:10.5px; padding:4px 10px; text-transform:uppercase; letter-spacing:0.03em; font-weight:700; cursor:pointer; border:none; font-family:inherit; border-radius:6px; transition:opacity .12s ease; }
+  .aq-status:hover{ opacity:0.8; }
+  .aqs-Pending{ background:var(--slate-bg); color:var(--ink-soft); }
+  .aqs-Asked{ background:var(--amber-bg); color:var(--amber); }
+  .aqs-Answered{ background:var(--green-bg); color:var(--green); }
+
+  .panel-add-row{ padding:12px 14px 14px; border-top:1px solid var(--line); }
+
+  .manage-block{ background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:16px; }
+  .manage-block h2{ font-size:11.5px; text-transform:uppercase; letter-spacing:0.06em; font-weight:700; color:var(--ink-soft); margin:0 0 12px; display:flex; align-items:center; justify-content:space-between; }
+  .manage-block h2 .count{ background:var(--slate-bg); color:var(--ink-soft); font-size:10.5px; padding:1px 8px; border-radius:9px; font-weight:700; }
+  .manage-note{ color:var(--ink-faint); font-size:12px; margin-top:10px; }
+
+  /* ---- manage window: side-by-side grouping to cut clutter ---- */
+  .manage-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start; }
+  .manage-grid .manage-block{ margin-bottom:0; }
+  @media(max-width:760px){ .manage-grid{ grid-template-columns:1fr; } }
+
+  /* ---- due field: quick-pick + calendar together while editing ---- */
+  .due-edit-quick{ font-family:inherit; font-size:11px; padding:2px 5px; border:1px solid var(--line); background:var(--panel-raised); color:var(--ink); border-radius:5px; color-scheme:dark; }
+
+  /* ---- drag and drop between projects ---- */
+  .drag-handle{ cursor:grab; color:var(--ink-faint); font-size:12px; flex:none; margin-top:3px; user-select:none; }
+  .drag-handle:active{ cursor:grabbing; }
+  .task-row.dragging{ opacity:.35; }
+  .proj-card.drag-over{ outline:2px dashed var(--accent); outline-offset:-2px; }
+  .proj-head.drag-over{ background:var(--panel-raised); }
+
+  /* ---- dashboard: workload panel ---- */
+  .wl-row{ display:flex; align-items:center; gap:9px; padding:8px 14px; border-bottom:1px solid var(--line); }
+  .wl-row:last-of-type{ border-bottom:none; }
+  .wl-name{ flex:0 0 84px; font-size:12px; color:var(--ink); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .wl-bar-wrap{ flex:1; height:7px; background:var(--slate-bg); border-radius:4px; overflow:hidden; }
+  .wl-bar{ height:100%; border-radius:4px; }
+  .wl-count{ flex:none; font-size:11.5px; color:var(--ink-soft); width:20px; text-align:right; }
+
+  /* ---- dashboard: projects overview panel ---- */
+  .po-row{ padding:10px 14px; border-bottom:1px solid var(--line); }
+  .po-row:last-of-type{ border-bottom:none; }
+  .po-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; gap:8px; }
+  .po-name{ font-weight:600; font-size:13px; color:var(--ink); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .po-sub{ font-size:11px; color:var(--ink-soft); margin-top:5px; }
+
+  .editor-row{ display:flex; gap:8px; align-items:center; padding:8px 0; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  .editor-row:last-of-type{ border-bottom:none; }
+  .editor-row input[type=color]{ width:30px; height:30px; padding:0; border:1px solid var(--line); border-radius:6px; background:none; cursor:pointer; flex:none; }
+  .editor-row input[type=text]{ flex:1 1 120px; min-width:100px; padding:6px 8px; border:1px solid var(--line); background:var(--panel-raised); color:var(--ink); border-radius:6px; font-family:inherit; font-size:12.5px; }
+  .editor-row select{ padding:6px 8px; border:1px solid var(--line); background:var(--panel-raised); color:var(--ink); border-radius:6px; font-family:inherit; font-size:12px; color-scheme:dark; }
+  .editor-row label{ display:flex; align-items:center; gap:5px; font-size:11px; color:var(--ink-soft); white-space:nowrap; }
+
+  .dept-heading{ font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-faint); font-weight:700; margin:16px 0 6px; }
+  .dept-heading:first-of-type{ margin-top:0; }
+  .me-pin{ font-size:9.5px; color:var(--ink-faint); font-weight:400; text-transform:none; letter-spacing:0; }
+
+  .section-label{ font-size:11.5px; text-transform:uppercase; letter-spacing:0.06em; font-weight:700; color:var(--ink-soft); margin:22px 0 10px; }
+
+  footer.foot{ margin-top:36px; padding-top:14px; border-top:1px solid var(--line); display:flex; justify-content:space-between; color:var(--ink-faint); font-size:11.5px; }
+  footer.foot button{ background:none; border:none; color:var(--ink-faint); text-decoration:underline; cursor:pointer; font-family:inherit; font-size:11.5px; }
+  footer.foot button:hover{ color:var(--ink-soft); }
+
+  .loading{ padding:40px; text-align:center; color:var(--ink-soft); }
+
+  ::selection{ background:var(--accent); color:var(--paper); }
+  input:focus, select:focus, textarea:focus, button:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
+
+  @media(max-width:480px){
+    header.top h1{ font-size:17px; line-height:1.25; }
+    .shell{ padding:20px 14px 90px; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="top">
+    <h1>Calver - Management</h1>
+    <div class="date mono" id="todayLabel"></div>
+  </header>
+
+  <nav class="tabs">
+    <button data-view="dashboard" class="active">Dashboard</button>
+    <button data-view="projects">Projects</button>
+    <button data-view="manage">Manage</button>
+  </nav>
+
+  <div id="app">
+    <div class="loading">Loading…</div>
+  </div>
+
+  <footer class="foot">
+    <span id="saveStatus">Saved locally to your account.</span>
+    <button id="resetBtn">Reset all data</button>
+  </footer>
+</div>
+
+<script>
+const TODAY = new Date();
+TODAY.setHours(0,0,0,0);
+const ME_ID = '__me__';
+
+const WEEKDAYS = [
+  {label:"Monday", dow:1}, {label:"Tuesday", dow:2}, {label:"Wednesday", dow:3},
+  {label:"Thursday", dow:4}, {label:"Friday", dow:5}, {label:"Saturday", dow:6}, {label:"Sunday", dow:0}
+];
+
+const DEFAULT_MEMBERS = ["Shameer","Raahyma","Mahnoor","Inayah","Eshan","Maryam","Amr","Zehra","Saad","Rumman","Rafiq","Samad","Zoeya","Dawood","Hafsa","Arishba","Maleeha","Javeria","Zunair","Zainab","Abdullah","Umer","Neshal","Shaayan"];
+
+const DEPT_IDS = { ops:'dep_ops', well:'dep_well', mkt:'dep_mkt', fin:'dep_fin', house:'dep_house' };
+const DEFAULT_DEPARTMENTS = [
+  {id:DEPT_IDS.ops, name:'Operations'},
+  {id:DEPT_IDS.well, name:'Wellbeing'},
+  {id:DEPT_IDS.mkt, name:'Marketing'},
+  {id:DEPT_IDS.fin, name:'Finance'},
+  {id:DEPT_IDS.house, name:'House Captains'},
+];
+const NAME_TO_DEPT = {
+  'maleeha':DEPT_IDS.ops, 'maryam f.':DEPT_IDS.ops, 'mahnoor':DEPT_IDS.ops, 'shameer':DEPT_IDS.ops,
+  'inayah':DEPT_IDS.well, 'zehra':DEPT_IDS.well, 'amr':DEPT_IDS.well, 'shaayan':DEPT_IDS.well,
+  'maryam':DEPT_IDS.mkt, 'eshan':DEPT_IDS.mkt,
+  'raahyma':DEPT_IDS.fin, 'umer':DEPT_IDS.fin, 'abdullah':DEPT_IDS.fin,
+};
+
+const DEFAULT_RECIPIENT_NAMES = ['NES','Admin'];
+
+const DEFAULT_STATUSES = [
+  {id:'st_active', name:'Active', color:'#7FB4E3', terminal:false},
+  {id:'st_planning', name:'Planning', color:'#E3A94E', terminal:false},
+  {id:'st_limbo', name:'Limbo', color:'#B39CE0', terminal:false},
+  {id:'st_done', name:'Done', color:'#6FBF95', terminal:true},
+];
+
+const PALETTE = ['#E2685A','#E3A94E','#6FBF95','#7FB4E3','#B39CE0','#E091B8','#8FD0C4','#D9C25A','#9BA8E8','#D98F5A','#7FD6E3','#C4E37F','#E37F9E','#7FE3A0','#A9E37F','#7FA0E3'];
+
+function fmtDate(d){
+  if(!d) return null;
+  const dt = new Date(d + 'T00:00:00');
+  return dt.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+}
+function daysUntil(d){
+  if(!d) return null;
+  const dt = new Date(d + 'T00:00:00');
+  return Math.round((dt - TODAY) / 86400000);
+}
+function dueClass(d){
+  const n = daysUntil(d);
+  if(n === null) return '';
+  if(n < 0) return 'overdue';
+  if(n <= 3) return 'soon';
+  return '';
+}
+function dueLabelLowkey(d){
+  const n = daysUntil(d);
+  if(n === null) return '';
+  if(n < 0) return `overdue by ${Math.abs(n)}d`;
+  if(n === 0) return 'due today';
+  if(n === 1) return 'due tomorrow';
+  return `due in ${n}d`;
+}
+function uid(){ return Math.random().toString(36).slice(2,9); }
+function plus(days){
+  const d = new Date(TODAY);
+  d.setDate(d.getDate()+days);
+  return d.toISOString().slice(0,10);
+}
+function nextWeekday(targetDow){
+  const day = TODAY.getDay();
+  const diff = (targetDow - day + 7) % 7;
+  return plus(diff);
+}
+function thisThursday(){ return nextWeekday(4); }
+function escapeHTML(s){
+  return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+function shuffledPalette(n){
+  let out = [];
+  while(out.length < n){ out = out.concat(shuffle(PALETTE)); }
+  return out.slice(0,n);
+}
+function randomHex(){ return PALETTE[Math.floor(Math.random()*PALETTE.length)]; }
+function hexA(hex, alpha){
+  if(!hex) return `rgba(139,144,155,${alpha})`;
+  const h = hex.replace('#','');
+  const r = parseInt(h.substring(0,2),16), g = parseInt(h.substring(2,4),16), b = parseInt(h.substring(4,6),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+// ---------------------------------------------------------------
+// SEED / MIGRATION
+// ---------------------------------------------------------------
+function buildDefaultMembers(){
+  const names = DEFAULT_MEMBERS.slice();
+  if(!names.some(n=>n.toLowerCase()==='maryam f.')) names.push('Maryam F.');
+  const colors = shuffledPalette(names.length);
+  const members = names.map((name,i)=>({
+    id: uid(), name, color: colors[i%colors.length],
+    department: NAME_TO_DEPT[name.toLowerCase()] || DEPT_IDS.house
+  }));
+  members.sort((a,b)=>a.name.localeCompare(b.name));
+  return members;
+}
+
+function buildDefaultRecipients(members){
+  const names = DEFAULT_RECIPIENT_NAMES.concat((members||[]).map(m=>m.name));
+  return names.map(name=>({id:uid(), name}));
+}
+
+function freshState(){
+  const members = buildDefaultMembers();
+  return {
+    members,
+    departments: JSON.parse(JSON.stringify(DEFAULT_DEPARTMENTS)),
+    statuses: JSON.parse(JSON.stringify(DEFAULT_STATUSES)),
+    recipients: buildDefaultRecipients(members),
+    uiColors: {project:'#B39CE0', general:'#8B909B'},
+    generalTasks: [],
+    trash: [],
+    projects: [
+      {
+        id: uid(), name: "NixLink WiFi Program", owner: "Usman", status: "st_active",
+        notes: "Operational plan complete. Document all sponsorship-route options and justify the chosen route before submission.",
+        open:true,
+        tasks: [
+          {id: uid(), text: "6-month consumer strength projection", done:false, due: plus(10), assignee:""},
+          {id: uid(), text: "Budget plan built from projection figures", done:false, due: plus(14), assignee:""},
+          {id: uid(), text: "Sponsorship proposal — document all potential routes", done:false, due: plus(18), assignee:""},
+          {id: uid(), text: "Justify chosen sponsorship route", done:false, due: plus(18), assignee: ME_ID},
+        ]
+      },
+      {
+        id: uid(), name: "Nixor Tribute — Ops Plan", owner: "Usman", status: "st_planning",
+        notes: "Future event. Just need the ops plan ready ahead of the event.", open:true,
+        tasks: [ {id: uid(), text: "Draft full ops plan", done:false, due: plus(28), assignee: ME_ID} ]
+      },
+      {
+        id: uid(), name: "Rest-of-Year Ops Plans", owner: "Usman", status: "st_planning",
+        notes: "All remaining event ops plans for the year, batched together.", open:true,
+        tasks: [ {id: uid(), text: "Draft ops plans for all remaining events", done:false, due: "2026-09-30", assignee: ME_ID} ]
+      },
+      {
+        id: uid(), name: "Campus Upgrade Ops Plans (x6)", owner: "Usman", status: "st_active",
+        notes: "Six separate ops plans, all due together.", open:true,
+        tasks: [
+          {id: uid(), text: "Upgrade ops plan 1", done:false, due: thisThursday(), assignee:""},
+          {id: uid(), text: "Upgrade ops plan 2", done:false, due: thisThursday(), assignee:""},
+          {id: uid(), text: "Upgrade ops plan 3", done:false, due: thisThursday(), assignee:""},
+          {id: uid(), text: "Upgrade ops plan 4", done:false, due: thisThursday(), assignee:""},
+          {id: uid(), text: "Upgrade ops plan 5", done:false, due: thisThursday(), assignee:""},
+          {id: uid(), text: "Upgrade ops plan 6", done:false, due: thisThursday(), assignee:""},
+        ]
+      },
+      {
+        id: uid(), name: "Urdu Wall Painting", owner: "Usman", status: "st_active",
+        notes: "Budget plan for the painter.", open:true,
+        tasks: [ {id: uid(), text: "Build painter budget plan", done:false, due: null, assignee: ME_ID} ]
+      },
+    ],
+    adminQueue: [
+      {id: uid(), question: "Can the painter bring his own equipment, or do we need to arrange it?", project: "Urdu Wall Painting", status: "Pending", answer: "", added: TODAY.toISOString().slice(0,10)},
+      {id: uid(), question: "What figures should go into the sponsorship proposal?", project: "NixLink WiFi Program", status: "Pending", answer: "", added: TODAY.toISOString().slice(0,10)},
+    ]
+  };
+}
+
+function migrate(s){
+  if(!s || typeof s !== 'object') return freshState();
+  if(!s.departments) s.departments = JSON.parse(JSON.stringify(DEFAULT_DEPARTMENTS));
+  if(!s.statuses) s.statuses = JSON.parse(JSON.stringify(DEFAULT_STATUSES));
+  if(!s.uiColors) s.uiColors = {project:'#B39CE0', general:'#8B909B'};
+  if(!s.trash) s.trash = [];
+  if(!s.generalTasks) s.generalTasks = [];
+  if(!s.adminQueue) s.adminQueue = [];
+  if(!s.projects) s.projects = [];
+  if(!s.members) s.members = [];
+  if(!s.recipients) s.recipients = buildDefaultRecipients(s.members);
+  s.adminQueue.forEach(q=>{ if(q.recipient === undefined) q.recipient = ''; });
+
+  if(s.members.length && typeof s.members[0] === 'string'){
+    const names = s.members.slice();
+    if(!names.some(n=>n.toLowerCase()==='maryam f.')) names.push('Maryam F.');
+    const colors = shuffledPalette(names.length);
+    s.members = names.map((name,i)=>({
+      id: uid(), name, color: colors[i%colors.length],
+      department: NAME_TO_DEPT[name.toLowerCase()] || DEPT_IDS.house
+    }));
+  }
+  s.members.sort((a,b)=>a.name.localeCompare(b.name));
+
+  const nameToId = {};
+  s.members.forEach(m=>{ nameToId[m.name.toLowerCase()] = m.id; });
+
+  function convertAssignee(val){
+    if(val === undefined || val === null || val === '') return '';
+    if(val === ME_ID || val === 'Myself') return ME_ID;
+    if(s.members.some(m=>m.id===val)) return val;
+    return nameToId[String(val).toLowerCase()] || '';
+  }
+
+  s.projects.forEach(p=>{
+    if(!p.tasks) p.tasks = [];
+    if(p.open === undefined) p.open = false;
+    p.tasks.forEach(t=>{
+      t.assignee = convertAssignee(t.assignee);
+      if(t.due === undefined) t.due = null;
+    });
+    if(!p.status || !s.statuses.some(st=>st.id===p.status)){
+      const match = s.statuses.find(st=>st.name.toLowerCase() === String(p.status||'').toLowerCase());
+      p.status = match ? match.id : s.statuses[0].id;
+    }
+  });
+  s.generalTasks.forEach(t=>{ t.assignee = convertAssignee(t.assignee); });
+
+  return s;
+}
+
+let state = null;
+let saveTimer = null;
+let editingDue = new Set();
+let currentView = 'dashboard';
+
+function debouncedSave(){
+  document.getElementById('saveStatus').textContent = 'Saving…';
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>{ saveState(); }, 500);
+}
+
+async function loadState(){
+  try{
+    const res = await window.storage.get('nsg-ops-state');
+    if(res && res.value){
+      state = migrate(JSON.parse(res.value));
+    } else {
+      state = freshState();
+      await saveState();
+    }
+  }catch(e){
+    state = freshState();
+    await saveState();
+  }
+  render();
+}
+
+async function saveState(){
+  try{
+    await window.storage.set('nsg-ops-state', JSON.stringify(state));
+    document.getElementById('saveStatus').textContent = 'Saved locally to your account.';
+  }catch(e){
+    document.getElementById('saveStatus').textContent = 'Save failed — check connection.';
+  }
+}
+
+// ---------------------------------------------------------------
+// LOOKUPS
+// ---------------------------------------------------------------
+function getMember(id){
+  if(id === ME_ID) return {id:ME_ID, name:'Myself', color:null};
+  if(!id) return null;
+  return state.members.find(m=>m.id===id) || null;
+}
+function getStatus(id){ return state.statuses.find(s=>s.id===id); }
+
+function memberOptionsHTML(selected){
+  let html = `<option value="" ${selected===''||selected===undefined?'selected':''}>Unassigned</option>`;
+  html += `<option value="${ME_ID}" ${selected===ME_ID?'selected':''}>Myself</option>`;
+  state.departments.forEach(dept=>{
+    const group = state.members.filter(m=>m.department===dept.id).sort((a,b)=>a.name.localeCompare(b.name));
+    if(!group.length) return;
+    html += `<optgroup label="${escapeHTML(dept.name)}">`;
+    group.forEach(m=>{ html += `<option value="${m.id}" ${selected===m.id?'selected':''}>${escapeHTML(m.name)}</option>`; });
+    html += `</optgroup>`;
+  });
+  const knownIds = new Set(state.departments.map(d=>d.id));
+  const orphans = state.members.filter(m=>!knownIds.has(m.department)).sort((a,b)=>a.name.localeCompare(b.name));
+  if(orphans.length){
+    html += `<optgroup label="Other">`;
+    orphans.forEach(m=>{ html += `<option value="${m.id}" ${selected===m.id?'selected':''}>${escapeHTML(m.name)}</option>`; });
+    html += `</optgroup>`;
+  }
+  return html;
+}
+
+function projectOptionsHTML(){
+  let html = `<option value="">General (no project)</option>`;
+  state.projects.forEach(p=>{
+    html += `<option value="${p.id}">${escapeHTML(p.name)}</option>`;
+  });
+  return html;
+}
+
+function recipientOptionsHTML(selected){
+  let html = `<option value="" ${selected===''||selected===undefined?'selected':''}>Unassigned</option>`;
+  state.recipients.forEach(r=>{
+    html += `<option value="${r.id}" ${selected===r.id?'selected':''}>${escapeHTML(r.name)}</option>`;
+  });
+  return html;
+}
+
+function quickDateOptionsHTML(){
+  let html = `<option value="">Quick pick…</option>`;
+  html += `<option value="today">Today</option>`;
+  html += `<option value="tomorrow">Tomorrow</option>`;
+  WEEKDAYS.forEach(w=>{
+    html += `<option value="wd:${w.dow}">${w.label}</option>`;
+  });
+  return html;
+}
+function resolveQuickDate(val){
+  if(val === 'today') return plus(0);
+  if(val === 'tomorrow') return plus(1);
+  if(val.startsWith('wd:')) return nextWeekday(parseInt(val.split(':')[1],10));
+  return null;
+}
+
+function assigneeLabelHTML(assigneeId){
+  if(assigneeId === ME_ID) return `<span class="label-pill mine-pill">Myself</span>`;
+  if(!assigneeId) return `<span class="label-pill unassigned-pill">Unassigned</span>`;
+  const m = getMember(assigneeId);
+  if(!m) return `<span class="label-pill unassigned-pill">Unknown</span>`;
+  return `<span class="label-pill" style="background:${hexA(m.color,0.16)};color:${m.color}">${escapeHTML(m.name)}</span>`;
+}
+function projectOrGeneralLabelHTML(projectName){
+  if(projectName){
+    return `<span class="label-pill" style="background:${hexA(state.uiColors.project,0.16)};color:${state.uiColors.project}">${escapeHTML(projectName)}</span>`;
+  }
+  return `<span class="label-pill" style="background:${hexA(state.uiColors.general,0.14)};color:${state.uiColors.general}">General</span>`;
+}
+function dueChipHTML(due){
+  const cls = dueClass(due);
+  return `<span class="due-chip ${cls}">${dueLabelLowkey(due)}</span>`;
+}
+function dueFieldHTML(ref, due){
+  if(editingDue.has(ref)){
+    return `<span class="due-field">
+      <select class="due-edit-quick" data-dueeditquick="${ref}">${quickDateOptionsHTML()}</select>
+      <input type="date" class="due-edit-input" data-dueedit="${ref}" value="${due||''}">
+    </span>`;
+  }
+  const chip = due ? dueChipHTML(due) : `<span class="due-chip none">no due date</span>`;
+  return `<span class="due-field">${chip}<button class="edit-ico" data-dueedittoggle="${ref}" title="Change due date">✎</button></span>`;
+}
+
+// ---------- flatten all tasks (project + general) ----------
+function allTasksFlat(){
+  const out = [];
+  state.projects.forEach(p=>{
+    p.tasks.forEach(t=>{
+      out.push({ref:`p:${p.id}:${t.id}`, text:t.text, done:t.done, due:t.due, assignee:t.assignee, projectName:p.name});
+    });
+  });
+  state.generalTasks.forEach(t=>{
+    out.push({ref:`g:${t.id}`, text:t.text, done:t.done, due:t.due, assignee:t.assignee, projectName:null});
+  });
+  return out;
+}
+function findTaskByRef(ref){
+  if(ref.startsWith('p:')){
+    const [,pid,tid] = ref.split(':');
+    const p = state.projects.find(x=>x.id===pid);
+    const t = p.tasks.find(x=>x.id===tid);
+    return {task:t, projectId:pid, remove:()=>{ p.tasks = p.tasks.filter(x=>x.id!==tid); }};
+  } else {
+    const tid = ref.split(':')[1];
+    const t = state.generalTasks.find(x=>x.id===tid);
+    return {task:t, projectId:null, remove:()=>{ state.generalTasks = state.generalTasks.filter(x=>x.id!==tid); }};
+  }
+}
+
+// ---------------------------------------------------------------
+// TRASH
+// ---------------------------------------------------------------
+function trashPush(type, payload, extra){
+  state.trash.push({id:uid(), type, payload: JSON.parse(JSON.stringify(payload)), extra: extra||null, deletedAt: TODAY.toISOString().slice(0,10)});
+}
+function restoreTrashItem(id){
+  const item = state.trash.find(x=>x.id===id);
+  if(!item) return;
+  if(item.type === 'project'){
+    state.projects.push(item.payload);
+  } else if(item.type === 'task'){
+    if(item.extra && item.extra.projectId){
+      const p = state.projects.find(x=>x.id===item.extra.projectId);
+      if(p) p.tasks.push(item.payload); else state.generalTasks.push(item.payload);
+    } else {
+      state.generalTasks.push(item.payload);
+    }
+  } else if(item.type === 'adminQueue'){
+    state.adminQueue.push(item.payload);
+  } else if(item.type === 'member'){
+    if(!state.departments.some(d=>d.id===item.payload.department)){
+      item.payload.department = state.departments[0] ? state.departments[0].id : null;
+    }
+    state.members.push(item.payload);
+  } else if(item.type === 'recipient'){
+    state.recipients.push(item.payload);
+  }
+  state.trash = state.trash.filter(x=>x.id!==id);
+}
+function trashLabel(item){
+  if(item.type==='project') return item.payload.name;
+  if(item.type==='task') return item.payload.text;
+  if(item.type==='adminQueue') return item.payload.question;
+  if(item.type==='member') return item.payload.name;
+  if(item.type==='recipient') return item.payload.name;
+  return 'Item';
+}
+function trashType(type){
+  return {project:'Project', task:'Task', adminQueue:'Follow-up', member:'Team member', recipient:'Recipient'}[type] || type;
+}
+function reassignAwayFromMember(id){
+  state.projects.forEach(p=> p.tasks.forEach(t=>{ if(t.assignee===id) t.assignee=''; }));
+  state.generalTasks.forEach(t=>{ if(t.assignee===id) t.assignee=''; });
+}
+function reassignAwayFromRecipient(id){
+  state.adminQueue.forEach(q=>{ if(q.recipient===id) q.recipient=''; });
+}
+
+// ---------------------------------------------------------------
+// DASHBOARD
+// ---------------------------------------------------------------
+function statsBarHTML(){
+  const allTasks = allTasksFlat();
+  const openTasks = allTasks.filter(t=>!t.done);
+  const overdue = openTasks.filter(t=>t.due && daysUntil(t.due) < 0).length;
+  const unassigned = openTasks.filter(t=>!t.assignee).length;
+  const activeProjects = state.projects.filter(p=>{ const st=getStatus(p.status); return st && !st.terminal; }).length;
+  const pendingFollowups = state.adminQueue.filter(q=>q.status!=='Answered').length;
+  const completed = allTasks.filter(t=>t.done).length;
+  return `
+    <div class="stats-bar">
+      <div class="stat"><span class="stat-num">${activeProjects}</span><span class="stat-label">active projects</span></div>
+      <div class="stat ${overdue?'stat-warn':''}"><span class="stat-num">${overdue}</span><span class="stat-label">overdue</span></div>
+      <div class="stat"><span class="stat-num">${unassigned}</span><span class="stat-label">unassigned</span></div>
+      <div class="stat"><span class="stat-num">${pendingFollowups}</span><span class="stat-label">follow-ups</span></div>
+      <div class="stat"><span class="stat-num">${allTasks.length}</span><span class="stat-label">total tasks</span></div>
+      <div class="stat"><span class="stat-num">${completed}</span><span class="stat-label">completed</span></div>
+    </div>
+  `;
+}
+
+// ---- workload: assigned count = ALL tasks listed for that person, done or not ----
+function workloadRows(){
+  const counts = {};
+  allTasksFlat().forEach(t=>{
+    if(!t.assignee) return;
+    counts[t.assignee] = (counts[t.assignee]||0)+1;
+  });
+  const rows = Object.keys(counts).map(id=>({id, count:counts[id]}));
+  rows.sort((a,b)=>b.count-a.count);
+  return rows;
+}
+function workloadHTML(){
+  const rows = workloadRows();
+  if(!rows.length) return `<div class="empty">No assignments yet.</div>`;
+  const max = rows[0].count || 1;
+  return rows.map(r=>{
+    const m = getMember(r.id);
+    const name = m ? m.name : 'Unknown';
+    const color = (m && m.color) ? m.color : 'var(--accent)';
+    const pct = Math.max(6, Math.round((r.count/max)*100));
+    return `
+      <div class="wl-row">
+        <div class="wl-name">${escapeHTML(name)}</div>
+        <div class="wl-bar-wrap"><div class="wl-bar" style="width:${pct}%;background:${color};"></div></div>
+        <div class="wl-count mono">${r.count}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function projectsOverviewHTML(){
+  if(!state.projects.length) return `<div class="empty">No projects yet.</div>`;
+  return state.projects.map(p=>{
+    const st = getStatus(p.status);
+    const total = p.tasks.length;
+    const done = p.tasks.filter(t=>t.done).length;
+    const pct = total ? Math.round((done/total)*100) : 0;
+    const stColor = st ? st.color : '#8B909B';
+    return `
+      <div class="po-row">
+        <div class="po-top">
+          <span class="po-name">${escapeHTML(p.name)}</span>
+          ${st ? `<span class="label-pill" style="background:${hexA(stColor,0.16)};color:${stColor}">${escapeHTML(st.name)}</span>` : ''}
+        </div>
+        <div class="wl-bar-wrap"><div class="wl-bar" style="width:${pct}%;background:${stColor};"></div></div>
+        <div class="po-sub">${done}/${total} task${total===1?'':'s'} complete</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderDashboard(){
+  const el = document.getElementById('app');
+  let dueTasks = allTasksFlat().filter(t=>!t.done && t.due);
+  dueTasks.sort((a,b)=>{
+    const mineA = a.assignee===ME_ID ? 0 : 1;
+    const mineB = b.assignee===ME_ID ? 0 : 1;
+    if(mineA !== mineB) return mineA - mineB;
+    return daysUntil(a.due) - daysUntil(b.due);
+  });
+
+  function dueRowHTML(t){
+    return `
+      <div class="due-row">
+        <input type="checkbox" data-duecheck="${t.ref}">
+        <div class="txt">
+          <div class="name">${escapeHTML(t.text)}</div>
+        </div>
+        <div class="tags">
+          ${assigneeLabelHTML(t.assignee)}
+          ${projectOrGeneralLabelHTML(t.projectName)}
+          ${dueFieldHTML(t.ref, t.due)}
+        </div>
+        <button class="rm" data-duerm="${t.ref}" title="Move to trash">🗑</button>
+      </div>
+    `;
+  }
+
+  const pendingAdmin = state.adminQueue.filter(q=>q.status !== 'Answered').concat(state.adminQueue.filter(q=>q.status === 'Answered'));
+
+  function aqRowHTML(q){
+    return `
+      <div class="aq-row" data-qid="${q.id}">
+        <div class="body">
+          <div class="q">${escapeHTML(q.question)}</div>
+          <div class="link">${q.project ? escapeHTML(q.project) : 'General'} &middot; added ${fmtDate(q.added)}</div>
+        </div>
+        <div class="right">
+          <select class="assignee-select" data-aqrecipient="${q.id}" title="Who this follow-up is for">${recipientOptionsHTML(q.recipient)}</select>
+          <button class="aq-status aqs-${q.status}" data-cyclestatus="${q.id}">${q.status}</button>
+          <button class="rm" data-rmaq="${q.id}" title="Move to trash">🗑</button>
+        </div>
+      </div>
+    `;
+  }
+
+  el.innerHTML = `
+    ${statsBarHTML()}
+    <div class="dash-grid">
+      <div class="panel">
+        <h2>Due <span class="count">${dueTasks.length}</span></h2>
+        ${dueTasks.length ? dueTasks.map(dueRowHTML).join('') : '<div class="empty">Nothing due. Add a task below.</div>'}
+        <div class="panel-add-row">
+          <div class="add-row">
+            <input type="text" id="dueNewText" placeholder="New task">
+            <select id="dueNewAssignee">${memberOptionsHTML('')}</select>
+            <select id="dueNewProject">${projectOptionsHTML()}</select>
+            <select id="dueNewQuick">${quickDateOptionsHTML()}</select>
+            <input type="date" id="dueNewDate">
+            <button id="dueAddBtn">Add task</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Follow Up <span class="count">${pendingAdmin.filter(q=>q.status!=='Answered').length}</span></h2>
+        ${pendingAdmin.length ? pendingAdmin.map(aqRowHTML).join('') : '<div class="empty">No follow-ups queued.</div>'}
+        <div class="panel-add-row">
+          <div class="add-row">
+            <input type="text" id="aqNewText" placeholder="New follow-up question">
+            <select id="aqNewProject">${projectOptionsHTML()}</select>
+            <select id="aqNewRecipient" title="Who this follow-up is for">${recipientOptionsHTML('')}</select>
+            <button id="aqAddBtn">Add follow-up</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dash-grid" style="margin-top:16px;">
+      <div class="panel">
+        <h2>Workload <span class="count">${workloadRows().length}</span></h2>
+        ${workloadHTML()}
+      </div>
+      <div class="panel">
+        <h2>Projects Overview <span class="count">${state.projects.length}</span></h2>
+        ${projectsOverviewHTML()}
+      </div>
+    </div>
+  `;
+}
+
+// ---------------------------------------------------------------
+// PROJECTS
+// ---------------------------------------------------------------
+function renderProjects(){
+  const el = document.getElementById('app');
+  const rankOf = id => { const i = state.statuses.findIndex(s=>s.id===id); return i<0 ? 999 : i; };
+
+  let html = `
+    <div class="add-row" style="margin-bottom:14px;">
+      <input type="text" id="projSearchInput" placeholder="Search projects…">
+    </div>
+    <div class="manage-note" style="margin:-6px 0 14px;">Drag a task by its ⠿ handle and drop it onto another project card to move it there.</div>
+    <div class="new-project-box">
+      <div class="row">
+        <input type="text" id="npName" placeholder="New project name">
+        <select id="npStatus">
+          ${state.statuses.map(s=>`<option value="${s.id}" ${s.name==='Active'?'selected':''}>${escapeHTML(s.name)}</option>`).join('')}
+        </select>
+        <button class="btn" id="npAdd">Add project</button>
+      </div>
+    </div>
+  `;
+
+  const sorted = state.projects.slice().sort((a,b)=> rankOf(a.status) - rankOf(b.status));
+
+  sorted.forEach(p=>{
+    const st = getStatus(p.status);
+    const openTasks = p.tasks.filter(t=>!t.done).length;
+    const nextDue = p.tasks.filter(t=>!t.done && t.due).sort((a,b)=>daysUntil(a.due)-daysUntil(b.due))[0];
+    const tintClass = (st && st.terminal) ? 'tint-done' : '';
+    const stBg = st ? hexA(st.color,0.16) : 'transparent';
+    const stColor = st ? st.color : 'var(--ink)';
+    html += `
+      <div class="proj-card ${tintClass}" data-pid="${p.id}" data-search="${escapeHTML(p.name.toLowerCase())}">
+        <div class="proj-head" data-toggle="${p.id}">
+          <div class="left">
+            <span class="chevron">${p.open ? '▾' : '▸'}</span>
+            <div>
+              <div class="proj-name">${escapeHTML(p.name)}</div>
+              <div class="proj-meta">${openTasks} open task${openTasks===1?'':'s'}${nextDue ? ' &middot; next: ' + fmtDate(nextDue.due) : ''}</div>
+            </div>
+          </div>
+          <select class="status-select" data-status-for="${p.id}" style="background:${stBg};color:${stColor}">
+            ${state.statuses.map(s=>`<option value="${s.id}" ${s.id===p.status?'selected':''}>${escapeHTML(s.name)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="proj-body ${p.open ? 'open' : ''}">
+          <button class="rm" data-rmproj="${p.id}" style="float:right;" title="Move project to trash">🗑</button>
+          <div style="clear:both;"></div>
+          ${p.tasks.map(t=>`
+            <div class="task-row ${t.done?'done':''}" draggable="true" data-dragtask="${p.id}:${t.id}">
+              <span class="drag-handle" title="Drag to move to another project">⠿</span>
+              <input type="checkbox" draggable="false" data-task="${p.id}:${t.id}" ${t.done?'checked':''}>
+              <div class="t-text">${escapeHTML(t.text)}</div>
+              <select class="assignee-select" draggable="false" data-taskassignee="${p.id}:${t.id}">${memberOptionsHTML(t.assignee)}</select>
+              <div class="t-due-wrap" draggable="false">${dueFieldHTML('p:'+p.id+':'+t.id, t.due)}</div>
+              <button class="rm" draggable="false" data-rmtask="${p.id}:${t.id}" title="Move to trash">🗑</button>
+            </div>
+          `).join('')}
+          <div class="add-row">
+            <input type="text" placeholder="New task" data-newtask="${p.id}">
+            <select data-newtaskassignee="${p.id}">${memberOptionsHTML('')}</select>
+            <select data-newtaskquick="${p.id}">${quickDateOptionsHTML()}</select>
+            <input type="date" data-newtaskdue="${p.id}">
+            <button data-addtask="${p.id}">Add</button>
+          </div>
+          <textarea class="notes-field" data-notes="${p.id}" placeholder="Notes">${escapeHTML(p.notes||'')}</textarea>
+        </div>
+      </div>
+    `;
+  });
+
+  el.innerHTML = html;
+}
+
+// ---------------------------------------------------------------
+// MANAGE
+// ---------------------------------------------------------------
+function renderManage(){
+  const el = document.getElementById('app');
+  let html = '';
+
+  // ---- Team members (full width — the longest list, gets its own row) ----
+  html += `<div class="manage-block"><h2>Team Members</h2>`;
+  state.departments.forEach(dept=>{
+    const group = state.members.filter(m=>m.department===dept.id).sort((a,b)=>a.name.localeCompare(b.name));
+    html += `<div class="dept-heading">${escapeHTML(dept.name)}${dept.id===DEPT_IDS.ops ? ' <span class="me-pin">+ Myself</span>' : ''}</div>`;
+    if(!group.length){ html += `<div class="manage-note" style="margin-top:0;">No one here yet.</div>`; }
+    group.forEach(m=>{
+      html += `
+        <div class="editor-row" data-memberrow="${m.id}">
+          <input type="color" data-membercolor="${m.id}" value="${m.color}">
+          <input type="text" data-membername="${m.id}" value="${escapeHTML(m.name)}">
+          <select data-memberdept="${m.id}">
+            ${state.departments.map(d=>`<option ${d.id===dept.id?'selected':''}>${escapeHTML(d.name)}</option>`).join('')}
+          </select>
+          <button class="rm" data-rmmember="${m.id}" title="Move to trash">🗑</button>
+        </div>
+      `;
+    });
+  });
+  const knownDeptIds = new Set(state.departments.map(d=>d.id));
+  const orphanMembers = state.members.filter(m=>!knownDeptIds.has(m.department));
+  if(orphanMembers.length){
+    html += `<div class="dept-heading">Unsorted</div>`;
+    orphanMembers.forEach(m=>{
+      html += `
+        <div class="editor-row" data-memberrow="${m.id}">
+          <input type="color" data-membercolor="${m.id}" value="${m.color}">
+          <input type="text" data-membername="${m.id}" value="${escapeHTML(m.name)}">
+          <select data-memberdept="${m.id}">
+            ${state.departments.map(d=>`<option>${escapeHTML(d.name)}</option>`).join('')}
+          </select>
+          <button class="rm" data-rmmember="${m.id}" title="Move to trash">🗑</button>
+        </div>
+      `;
+    });
+  }
+  html += `
+    <div class="add-row" style="margin-top:10px;">
+      <input type="color" id="newMemberColor" value="${randomHex()}">
+      <input type="text" id="newMemberName" placeholder="Add a team member">
+      <select id="newMemberDept">${state.departments.map(d=>`<option>${escapeHTML(d.name)}</option>`).join('')}</select>
+      <button id="addMemberBtn">Add</button>
+    </div>
+    <div class="manage-note">Rename, recolor, or move anyone between departments — changes apply everywhere instantly. "Myself" is a fixed identity kept separate from this list.</div>
+  `;
+  html += `</div>`;
+
+  // ---- Row: Departments | Follow-up Recipients (side by side) ----
+  html += `<div class="manage-grid">`;
+
+  html += `<div class="manage-block"><h2>Departments</h2>`;
+  html += state.departments.map((d,i)=>`
+    <div class="editor-row">
+      <input type="text" data-deptname="${i}" value="${escapeHTML(d.name)}">
+      <button class="rm" data-rmdept="${i}" title="Delete department">🗑</button>
+    </div>
+  `).join('');
+  html += `
+    <div class="add-row">
+      <input type="text" id="newDeptName" placeholder="Add a department">
+      <button id="addDeptBtn">Add</button>
+    </div>
+    <div class="manage-note">Groups team members above.</div>
+  `;
+  html += `</div>`;
+
+  html += `<div class="manage-block"><h2>Follow-up Recipients</h2>`;
+  state.recipients.forEach((r,i)=>{
+    html += `
+      <div class="editor-row">
+        <input type="text" data-recipientname="${r.id}" value="${escapeHTML(r.name)}">
+        <button class="rm" data-recipientup="${r.id}" ${i===0?'disabled':''} title="Move up">↑</button>
+        <button class="rm" data-recipientdown="${r.id}" ${i===state.recipients.length-1?'disabled':''} title="Move down">↓</button>
+        <button class="rm" data-rmrecipient="${r.id}" title="Move to trash">🗑</button>
+      </div>
+    `;
+  });
+  html += `
+    <div class="add-row">
+      <input type="text" id="newRecipientName" placeholder="Add a recipient">
+      <button id="addRecipientBtn">Add</button>
+    </div>
+    <div class="manage-note">Who a follow-up can be directed to, on the Dashboard.</div>
+  `;
+  html += `</div>`;
+
+  html += `</div>`; // end manage-grid
+
+  // ---- Row: Project Statuses | Due List Label Colors ----
+  html += `<div class="manage-grid">`;
+
+  html += `<div class="manage-block"><h2>Project Statuses</h2>`;
+  state.statuses.forEach((s,i)=>{
+    html += `
+      <div class="editor-row">
+        <input type="color" data-statuscolor="${s.id}" value="${s.color}">
+        <input type="text" data-statusname="${s.id}" value="${escapeHTML(s.name)}">
+        <label><input type="checkbox" data-statusterminal="${s.id}" ${s.terminal?'checked':''}> completed-type</label>
+        <button class="rm" data-statusup="${s.id}" ${i===0?'disabled':''} title="Move up">↑</button>
+        <button class="rm" data-statusdown="${s.id}" ${i===state.statuses.length-1?'disabled':''} title="Move down">↓</button>
+        <button class="rm" data-rmstatus="${s.id}" title="Delete status">🗑</button>
+      </div>
+    `;
+  });
+  html += `
+    <div class="add-row">
+      <input type="color" id="newStatusColor" value="${randomHex()}">
+      <input type="text" id="newStatusName" placeholder="Add a status">
+      <button id="addStatusBtn">Add</button>
+    </div>
+    <div class="manage-note">Order sets sort order in Projects. "Completed-type" gives the tinted, sunk-to-bottom treatment.</div>
+  `;
+  html += `</div>`;
+
+  html += `
+    <div class="manage-block">
+      <h2>Due List Label Colors</h2>
+      <div class="editor-row">
+        <input type="color" id="projLabelColor" value="${state.uiColors.project}">
+        <span style="flex:1;font-size:12.5px;color:var(--ink-soft);">Project label color</span>
+      </div>
+      <div class="editor-row">
+        <input type="color" id="genLabelColor" value="${state.uiColors.general}">
+        <span style="flex:1;font-size:12.5px;color:var(--ink-soft);">General task label color</span>
+      </div>
+      <div class="manage-note">Colors used on the little pills next to due tasks.</div>
+    </div>
+  `;
+
+  html += `</div>`; // end manage-grid
+
+  // ---- Row: Completed Tasks | Trash ----
+  html += `<div class="manage-grid">`;
+
+  const completed = allTasksFlat().filter(t=>t.done).sort((a,b)=> (a.projectName||'').localeCompare(b.projectName||'') || a.text.localeCompare(b.text));
+  html += `<div class="manage-block"><h2>Completed Tasks <span class="count">${completed.length}</span></h2>`;
+  if(!completed.length) html += `<div class="manage-note" style="margin-top:0;">Nothing completed yet.</div>`;
+  completed.forEach(t=>{
+    html += `
+      <div class="due-row">
+        <input type="checkbox" checked data-uncomplete="${t.ref}">
+        <div class="txt"><div class="name" style="text-decoration:line-through;color:var(--ink-faint);">${escapeHTML(t.text)}</div></div>
+        <div class="tags">
+          ${assigneeLabelHTML(t.assignee)}
+          ${projectOrGeneralLabelHTML(t.projectName)}
+        </div>
+        <button class="rm" data-duerm="${t.ref}" title="Move to trash">🗑</button>
+      </div>
+    `;
+  });
+  html += `</div>`;
+
+  html += `<div class="manage-block"><h2>Trash <span class="count">${state.trash.length}</span></h2>`;
+  if(!state.trash.length){
+    html += `<div class="manage-note" style="margin-top:0;">Empty. Anything you delete shows up here so you can bring it back.</div>`;
+  }
+  state.trash.slice().reverse().forEach(item=>{
+    html += `
+      <div class="due-row">
+        <div class="txt">
+          <div class="name">${escapeHTML(trashLabel(item))}</div>
+          <div class="sub">${escapeHTML(trashType(item.type))} &middot; deleted ${fmtDate(item.deletedAt)}</div>
+        </div>
+        <div class="tags" style="flex-direction:row;align-items:center;">
+          <button class="btn" data-restore="${item.id}" style="padding:5px 10px;font-size:11px;">Restore</button>
+          <button class="rm" data-purge="${item.id}" title="Delete forever">🗑</button>
+        </div>
+      </div>
+    `;
+  });
+  html += `</div>`;
+
+  html += `</div>`; // end manage-grid
+
+  // ---- Backup (full width) ----
+  html += `
+    <div class="manage-block">
+      <h2>Backup</h2>
+      <div class="manage-note" style="margin-top:0;">Export a copy of everything, or restore from a file you saved earlier.</div>
+      <div class="add-row">
+        <button class="btn" id="exportBtn">Export data</button>
+        <button class="btn" id="importBtn">Import data</button>
+        <input type="file" id="importFile" accept="application/json" style="display:none;">
+      </div>
+    </div>
+  `;
+
+  el.innerHTML = html;
+}
+
+// ---------------------------------------------------------------
+function render(){
+  if(currentView === 'dashboard') renderDashboard();
+  else if(currentView === 'projects') renderProjects();
+  else renderManage();
+  attachHandlers();
+}
+
+function attachHandlers(){
+  const el = document.getElementById('app');
+
+  // ---- shared: due date inline edit ----
+  el.querySelectorAll('[data-dueedittoggle]').forEach(node=>{
+    node.addEventListener('click', ()=>{
+      editingDue.add(node.getAttribute('data-dueedittoggle'));
+      render();
+    });
+  });
+  el.querySelectorAll('[data-dueedit]').forEach(node=>{
+    node.addEventListener('change', ()=>{
+      const ref = node.getAttribute('data-dueedit');
+      const {task} = findTaskByRef(ref);
+      task.due = node.value || null;
+      editingDue.delete(ref);
+      saveState(); render();
+    });
+    node.addEventListener('blur', ()=>{
+      const ref = node.getAttribute('data-dueedit');
+      if(editingDue.has(ref)){ editingDue.delete(ref); render(); }
+    });
+  });
+  el.querySelectorAll('[data-dueeditquick]').forEach(node=>{
+    node.addEventListener('change', ()=>{
+      const ref = node.getAttribute('data-dueeditquick');
+      if(node.value === '') return;
+      const resolved = resolveQuickDate(node.value);
+      const {task} = findTaskByRef(ref);
+      task.due = resolved;
+      editingDue.delete(ref);
+      saveState(); render();
+    });
+  });
+
+  // ---- shared: task removal / completion (used on dashboard + manage completed list) ----
+  el.querySelectorAll('[data-duecheck]').forEach(node=>{
+    node.addEventListener('change', ()=>{
+      const {task} = findTaskByRef(node.getAttribute('data-duecheck'));
+      task.done = node.checked;
+      saveState(); render();
+    });
+  });
+  el.querySelectorAll('[data-uncomplete]').forEach(node=>{
+    node.addEventListener('change', ()=>{
+      const {task} = findTaskByRef(node.getAttribute('data-uncomplete'));
+      task.done = node.checked;
+      saveState(); render();
+    });
+  });
+  el.querySelectorAll('[data-duerm]').forEach(node=>{
+    node.addEventListener('click', ()=>{
+      const ref = node.getAttribute('data-duerm');
+      const {task, projectId, remove} = findTaskByRef(ref);
+      trashPush('task', task, {projectId});
+      remove();
+      saveState(); render();
+    });
+  });
+
+  const dueAddBtn = document.getElementById('dueAddBtn');
+  if(dueAddBtn){
+    const quickSel = document.getElementById('dueNewQuick');
+    const dateInp = document.getElementById('dueNewDate');
+    quickSel.addEventListener('change', ()=>{
+      const resolved = resolveQuickDate(quickSel.value);
+      if(resolved) dateInp.value = resolved;
+    });
+    dueAddBtn.addEventListener('click', ()=>{
+      const text = document.getElementById('dueNewText').value.trim();
+      const assignee = document.getElementById('dueNewAssignee').value;
+      const pid = document.getElementById('dueNewProject').value;
+      const due = dateInp.value || null;
+      if(text === '') return;
+      if(pid){
+        const p = state.projects.find(x=>x.id===pid);
+        p.tasks.push({id:uid(), text, done:false, due, assignee});
+      } else {
+        state.generalTasks.push({id:uid(), text, done:false, due, assignee});
+      }
+      saveState(); render();
+    });
+  }
+
+  // ---- Dashboard: follow-ups ----
+  el.querySelectorAll('[data-cyclestatus]').forEach(node=>{
+    node.addEventListener('click', ()=>{
+      const qid = node.getAttribute('data-cyclestatus');
+      const q = state.adminQueue.find(x=>x.id===qid);
+      const cycle = {Pending:'Asked', Asked:'Answered', Answered:'Pending'};
+      q.status = cycle[q.status];
+      saveState(); render();
+    });
+  });
+  el.querySelectorAll('[data-aqrecipient]').forEach(node=>{
+    node.addEventListener('change', ()=>{
+      const qid = node.getAttribute('data-aqrecipient');
+      const q = state.adminQueue.find(x=>x.id===qid);
+      q.recipient = node.value;
+      saveState(); render();
+    });
+  });
+  el.querySelectorAll('[data-rmaq]').forEach(node=>{
+    node.addEventListener('click', ()=>{
+      const qid = node.getAttribute('data-rmaq');
+      const q = state.adminQueue.find(x=>x.id===qid);
+      trashPush('adminQueue', q, null);
+      state.adminQueue = state.adminQueue.filter(x=>x.id!==qid);
+      saveState(); render();
+    });
+  });
+  const aqAddBtn = document.getElementById('aqAddBtn');
+  if(aqAddBtn){
+    aqAddBtn.addEventListener('click', ()=>{
+      const textInp = document.getElementById('aqNewText');
+      const pid = document.getElementById('aqNewProject').value;
+      const recipient = document.getElementById('aqNewRecipient').value;
+      const text = textInp.value.trim();
+      if(text === '') return;
+      const proj = state.projects.find(x=>x.id===pid);
+      state.adminQueue.push({id:uid(), question:text, project: proj?proj.name:'', status:'Pending', answer:'', recipient, added: TODAY.toISOString().slice(0,10)});
+      saveState(); render();
+    });
+  }
+
+  // ---- Projects view ----
+  el.querySelectorAll('.status-select').forEach(node=>{
+    node.addEventListener('click', e=>e.stopPropagation());
+    node.addEventListener('mousedown', e=>e.stopPropagation());
+  });
+  el.querySelectorAll('[data-toggle]').forEach(node=>{
+    node.addEventListener('click', ()=>{
+      const pid = node.getAttribute('data-toggle');
+      const p = state.projects.find(x=>x.id===pid);
+      p.open = !p.open;
+      render();
+    });
+  });
+
+  // ---- Projects view: drag & drop tasks between projects ----
+  el.querySelectorAll('[data-dragtask]').forEach(node=>{
+    node.addEventListener('dragstart', (e)=>{
+      e.dataTransfer.setData('text/plain', node.getAttribute('data-dragtask'));
+      e.dataTransfer.effectAllowed = 'move';
+      node.classList.add('dragging');
+    });
+    node.addEventListener('dragend', ()=>{ node.classList.remove('dragging'); });
+  });
+  el.querySelectorAll('.proj-card').forEach(card=>{
+    card.addEventListener('dragover', (e)=>{
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      card.classList.add('drag-over');
+    });
+    card.addEventListener('dragleave', (e)=>{
+      if(!card.contains(e.relatedTarget)) card.classList.remove('drag-over');
+    });
+    card.addEventListener('drop', (e)=>{
+      e.preventDefault();
+      card.classList.remove('drag-over');
+      const data = e.dataTransfer.getData('text/plain');
+      if(!data || !data.includes(':')) return;
+      const [srcPid, tid] = data.split(':');
+      const destPid = card.getAttribute('data-pid');
+      if(srcPid === destPid) return;
+      const srcProj = state.projects.find(x=>x.id===srcPid);
+      const destProj = state.projects.find(x=>x.id===destPid);
+      if(!srcProj || !destProj) return;
+      const idx = srcProj.tasks.findIndex(x=>x.id===tid);
+      if(idx < 0) return;
+      const [task] = srcProj.tasks.splice(idx,1);
+      destProj.tasks.push(task);
+      destProj.open = true;
+      saveState(); render();
+    });
+  });
+  el.querySelectorAll('[data-task]').forEach(node=>{
+    node.addEventListener('change', ()=>{
+      const [pid,tid] = node.getAttribute('data-task').split(':');
+      const p = state.projects.find(x=>x.id===pid);
+      const t = p.tasks.find(x=>x.id===tid);
+      t.done = node.checked;
+      saveState(); render();
+    });
+  });
+  el.querySelectorAll('[data-taskassignee]').forEach(node=>{
+    node.addEventListener('change', ()=>{
+      const [pid,tid] = node.getAttribute('data-taskassignee').split(':');
+      const p = state.projects.find(x=>x.id===pid);
+      const t = p.tasks.find(x=>x.id===tid);
+      t.assignee = node.value;
+      p.open = true;
+      saveState(); render();
+    });
+  });
+  el.querySelectorAll('[data-rmtask]').forEach(node=>{
+    node.addEventListener('click', ()=>{
+      const [pid,tid] = node.getAttribute('data-rmtask').split(':');
+      const p = state.projects.find(x=>x.id===pid);
+      const t = p.tasks.find(x=>x.id===tid);
+      trashPush('task', t, {projectId:pid});
+      p.tasks = p.tasks.filter(x=>x.id!==tid);
+      p.open = true;
+      saveState(); render();
+    });
+  });
+  el.querySelectorAll('[data-newtaskquick]').forEach(node=>{
+    node.addEventListener('change', ()=>{
+      const pid = node.getAttribute('data-newtaskquick');
+      const dateInp = el.querySelector(`[data-newtaskdue="${pid}"]`);
+      const resolved = resolveQuickDate(node.value);
+      if(resolved) dateInp.value = resolved;
+    });
+  });
+  el.querySelectorAll('[data-addtask]').forEach(node=>{
+    node.addEventListener('click', ()=>{
+      const pid = node.getAttribute('data-addtask');
+      const p = state.projects.find(x=>x.id===pid);
+      const input = el.querySelector(`[data-newtask="${pid}"]`);
+      const dueInput = el.querySelector(`[data-newtaskdue="${pid}"]`);
+      const assigneeInput = el.querySelector(`[data-newtaskassignee="${pid}"]`);
+      if(input.value.trim()===''){ return; }
+      p.tasks.push({id:uid(), text: input.value.trim(), done:false, due: dueInput.value || null, assignee: assigneeInput.value});
+      p.open = true;
+      saveState(); render();
+    });
+  });
+  el.querySelectorAll('[data-status-for]').forEach(node=>{
+    node.addEventListener('change', ()=>{
+      const pid = node.getAttribute('data-status-for');
+      const p = state.projects.find(x=>x.id===pid);
+      p.status = node.value;
+      p.open = true;
+      saveState(); render();
+    });
+  });
+  el.querySelectorAll('[data-notes]').forEach(node=>{
+    node.addEventListener('input', ()=>{
+      const pid = node.getAttribute('data-notes');
+      const p = state.projects.find(x=>x.id===pid);
+      p.notes = node.value;
+      debouncedSave();
+    });
+  });
+  el.querySelectorAll('[data-rmproj]').forEach(node=>{
+    node.addEventListener('click', ()=>{
+      const pid = node.getAttribute('data-rmproj');
+      const p = state.projects.find(x=>x.id===pid);
+      if(!confirm('Move this project and all its tasks to trash?')) return;
+      trashPush('project', p, null);
+      state.projects = state.projects.filter(x=>x.id!==pid);
+      saveState(); render();
+    });
+  });
+  const npAdd = document.getElementById('npAdd');
+  if(npAdd){
+    npAdd.addEventListener('click', ()=>{
+      const name = document.getElementById('npName').value.trim();
+      const status = document.getElementById('npStatus').value;
+      if(name===''){ return; }
+      state.projects.push({id:uid(), name, owner:'Usman', status, notes:'', tasks:[], open:true});
+      saveState(); render();
+    });
+  }
+  const projSearchInput = document.getElementById('projSearchInput');
+  if(projSearchInput){
+    projSearchInput.addEventListener('input', ()=>{
+      const q = projSearchInput.value.trim().toLowerCase();
+      el.querySelectorAll('.proj-card').forEach(card=>{
+        const hay = card.getAttribute('data-search') || '';
+        card.style.display = (!q || hay.includes(q)) ? '' : 'none';
+      });
+    });
+  }
+
+  // ---- Manage: members ----
+  el.querySelectorAll('[data-membercolor]').forEach(node=>{
+    node.addEventListener('change', ()=>{
+      const id = node.getAttribute('data-membercolor');
+      const m = state.members.find(x=>x.id===id);
+      if(m){ m.color = node.value; debouncedSave(); }
+    });
+  });
+  el.querySelectorAll('[data-membername]').forEach(node=>{
+    node.addEventListener('input', ()=>{
+      const id = node.getAttribute('data-membername');
+      const m = state.members.find(x=>x.id===id);
+      if(m){ m.name = node.value; debouncedSave(); }
+    });
+  });
+  el.querySelectorAll('[data-memberdept]').forEach(node=>{
+    node.addEventListener('change', ()=>{
+      const id = node.getAttribute('data-memberdept');
+      const m = state.members.find(x=>x.id===id);
+      const dept = state.departments.find(d=>d.name===node.value);
+      if(m && dept){ m.department = dept.id; saveState(); render(); }
+    });
+  });
+  el.querySelectorAll('[data-rmmember]').forEach(node=>{
+    node.addEventListener('click', ()=>{
+      const id = node.getAttribute('data-rmmember');
+      const m = state.members.find(x=>x.id===id);
+      if(!m) return;
+      if(!confirm(`Move ${m.name} to trash?`)) return;
+      reassignAwayFromMember(id);
+      trashPush('member', m, null);
+      state.members = state.members.filter(x=>x.id!==id);
+      saveState(); render();
+    });
+  });
+  const addMemberBtn = document.getElementById('addMemberBtn');
+  if(addMemberBtn){
+    addMemberBtn.addEventListener('click', ()=>{
+      const nameInp = document.getElementById('newMemberName');
+      const colorInp = document.getElementById('newMemberColor');
+      const deptSel = document.getElementById('newMemberDept');
+      const name = nameInp.value.trim();
+      if(name === '') return;
+      const dept = state.departments.find(d=>d.name===deptSel.value);
+      state.members.push({id:uid(), name, color: colorInp.value, department: dept ? dept.id : (state.departments[0]?state.departments[0].id:null)});
+      saveState(); render();
+    });
+  }
+
+  // ---- Manage: departments ----
+  el.querySelectorAll('[data-deptname]').forEach(node=>{
+    node.addEventListener('input', ()=>{
+      const i = parseInt(node.getAttribute('data-deptname'),10);
+      state.departments[i].name = node.value;
+      debouncedSave();
+    });
+  });
+  el.querySelectorAll('[data-rmdept]').forEach(node=>{
+    node.addEventListener('click', ()=>{
+      const i = parseInt(node.getAttribute('data-rmdept'),10);
+      if(state.departments.length <= 1){ alert('You need at least one department.'); return; }
+      const dept = state.departments[i];
+      const affected = state.members.filter(m=>m.department===dept.id).length;
+      const msg = affected ? `Delete "${dept.name}"? ${affected} member(s) will move to the first remaining department.` : `Delete "${dept.name}"?`;
+      if(!confirm(msg)) return;
+      state.departments.splice(i,1);
+      const fallback = state.departments[0].id;
+      state.members.forEach(m=>{ if(m.department===dept.id) m.department=fallback; });
+      saveState(); render();
+    });
+  });
+  const addDeptBtn = document.getElementById('addDeptBtn');
+  if(addDeptBtn){
+    addDeptBtn.addEventListener('click', ()=>{
+      const inp = document.getElementById('newDeptName');
+      const name = inp.value.trim();
+      if(name === '') return;
+      state.departments.push({id:uid(), name});
+      saveState(); render();
+    });
+  }
+
+  // ---- Manage: follow-up recipients ----
+  el.querySelectorAll('[data-recipientname]').forEach(node=>{
+    node.addEventListener('input', ()=>{
+      const id = node.getAttribute('data-recipientname');
+      const r = state.recipients.find(x=>x.id===id);
+      if(r){ r.name = node.value; debouncedSave(); }
+    });
+  });
+  el.querySelectorAll('[data-recipientup]').forEach(node=>{
+    node.addEventListener('click', ()=>{
+      const id = node.getAttribute('data-recipientup');
+      const i = state.recipients.findIndex(x=>x.id===id);
+      if(i>0){ [state.recipients[i-1],state.recipients[i]] = [state.recipients[i],state.recipients[i-1]]; saveState(); render(); }
+    });
+  });
+  el.querySelectorAll('[data-recipientdown]').forEach(node=>{
+    node.addEventListener('click', ()=>{
+      const id = node.getAttribute('data-recipientdown');
+      const i = state.recipients.findIndex(x=>x.id===id);
+      if(i<state.recipients.length-1){ [state.recipients[i+1],state.recipients[i]] = [state.recipients[i],state.recipients[i+1]]; saveState(); render(); }
+    });
+  });
+  el.querySelectorAll('[data-rmrecipient]').forEach(node=>{
+    node.addEventListener('click', ()=>{
+      const id = node.getAttribute('data-rmrecipient');
+      if(state.recipients.length <= 1){ alert('You need at least one recipient.'); return; }
+      const r = state.recipients.find(x=>x.id===id);
+      if(!r) return;
+      if(!confirm(`Move "${r.name}" to trash?`)) return;
+      reassignAwayFromRecipient(id);
+      trashPush('recipient', r, null);
+      state.recipients = state.recipients.filter(x=>x.id!==id);
+      saveState(); render();
+    });
+  });
+  const addRecipientBtn = document.getElementById('addRecipientBtn');
+  if(addRecipientBtn){
+    addRecipientBtn.addEventListener('click', ()=>{
+      const inp = document.getElementById('newRecipientName');
+      const name = inp.value.trim();
+      if(name === '') return;
+      state.recipients.push({id:uid(), name});
+      saveState(); render();
+    });
+  }
+
+  // ---- Manage: statuses ----
+  el.querySelectorAll('[data-statuscolor]').forEach(node=>{
+    node.addEventListener('change', ()=>{
+      const id = node.getAttribute('data-statuscolor');
+      const s = state.statuses.find(x=>x.id===id);
+      if(s){ s.color = node.value; debouncedSave(); }
+    });
+  });
+  el.querySelectorAll('[data-statusname]').forEach(node=>{
+    node.addEventListener('input', ()=>{
+      const id = node.getAttribute('data-statusname');
+      const s = state.statuses.find(x=>x.id===id);
+      if(s){ s.name = node.value; debouncedSave(); }
+    });
+  });
+  el.querySelectorAll('[data-statusterminal]').forEach(node=>{
+    node.addEventListener('change', ()=>{
+      const id = node.getAttribute('data-statusterminal');
+      const s = state.statuses.find(x=>x.id===id);
+      if(s){ s.terminal = node.checked; saveState(); render(); }
+    });
+  });
+  el.querySelectorAll('[data-statusup]').forEach(node=>{
+    node.addEventListener('click', ()=>{
+      const id = node.getAttribute('data-statusup');
+      const i = state.statuses.findIndex(x=>x.id===id);
+      if(i>0){ [state.statuses[i-1],state.statuses[i]] = [state.statuses[i],state.statuses[i-1]]; saveState(); render(); }
+    });
+  });
+  el.querySelectorAll('[data-statusdown]').forEach(node=>{
+    node.addEventListener('click', ()=>{
+      const id = node.getAttribute('data-statusdown');
+      const i = state.statuses.findIndex(x=>x.id===id);
+      if(i<state.statuses.length-1){ [state.statuses[i+1],state.statuses[i]] = [state.statuses[i],state.statuses[i+1]]; saveState(); render(); }
+    });
+  });
+  el.querySelectorAll('[data-rmstatus]').forEach(node=>{
+    node.addEventListener('click', ()=>{
+      const id = node.getAttribute('data-rmstatus');
+      if(state.statuses.length <= 1){ alert('You need at least one status.'); return; }
+      const affected = state.projects.filter(p=>p.status===id).length;
+      const msg = affected ? `Delete this status? ${affected} project(s) using it will move to the first remaining status.` : 'Delete this status?';
+      if(!confirm(msg)) return;
+      state.statuses = state.statuses.filter(x=>x.id!==id);
+      const fallback = state.statuses[0].id;
+      state.projects.forEach(p=>{ if(p.status===id) p.status=fallback; });
+      saveState(); render();
+    });
+  });
+  const addStatusBtn = document.getElementById('addStatusBtn');
+  if(addStatusBtn){
+    addStatusBtn.addEventListener('click', ()=>{
+      const nameInp = document.getElementById('newStatusName');
+      const colorInp = document.getElementById('newStatusColor');
+      const name = nameInp.value.trim();
+      if(name === '') return;
+      state.statuses.push({id:uid(), name, color:colorInp.value, terminal:false});
+      saveState(); render();
+    });
+  }
+
+  // ---- Manage: label colors ----
+  const projLabelColor = document.getElementById('projLabelColor');
+  if(projLabelColor) projLabelColor.addEventListener('change', ()=>{ state.uiColors.project = projLabelColor.value; saveState(); render(); });
+  const genLabelColor = document.getElementById('genLabelColor');
+  if(genLabelColor) genLabelColor.addEventListener('change', ()=>{ state.uiColors.general = genLabelColor.value; saveState(); render(); });
+
+  // ---- Manage: trash ----
+  el.querySelectorAll('[data-restore]').forEach(node=>{
+    node.addEventListener('click', ()=>{
+      restoreTrashItem(node.getAttribute('data-restore'));
+      saveState(); render();
+    });
+  });
+  el.querySelectorAll('[data-purge]').forEach(node=>{
+    node.addEventListener('click', ()=>{
+      if(!confirm('Delete this permanently? This cannot be undone.')) return;
+      state.trash = state.trash.filter(x=>x.id!==node.getAttribute('data-purge'));
+      saveState(); render();
+    });
+  });
+
+  // ---- Manage: backup ----
+  const exportBtn = document.getElementById('exportBtn');
+  if(exportBtn){
+    exportBtn.addEventListener('click', ()=>{
+      const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `calver-management-backup-${TODAY.toISOString().slice(0,10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
+  }
+  const importBtn = document.getElementById('importBtn');
+  const importFile = document.getElementById('importFile');
+  if(importBtn && importFile){
+    importBtn.addEventListener('click', ()=> importFile.click());
+    importFile.addEventListener('change', ()=>{
+      const file = importFile.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = ()=>{
+        try{
+          const parsed = JSON.parse(reader.result);
+          state = migrate(parsed);
+          saveState();
+          render();
+          alert('Data imported.');
+        }catch(e){
+          alert('Could not read that file. Make sure it is a Calver export.');
+        }
+      };
+      reader.readAsText(file);
+      importFile.value = '';
+    });
+  }
+}
+
+document.querySelectorAll('nav.tabs button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    currentView = btn.getAttribute('data-view');
+    render();
+  });
+});
+
+document.getElementById('resetBtn').addEventListener('click', async ()=>{
+  if(!confirm('Reset all data back to the starting seed? This cannot be undone.')) return;
+  state = freshState();
+  await saveState();
+  render();
+});
+
+document.getElementById('todayLabel').textContent = TODAY.toLocaleDateString('en-GB',{weekday:'long', day:'numeric', month:'long', year:'numeric'});
+
+loadState();
+</script>
+</body>
+</html>
