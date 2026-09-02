@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { longDateLabel } from '@/lib/date';
-import { freshState, migrate } from '@/lib/seed';
-import { readRaw, writeRaw } from '@/lib/storage';
+import { freshState } from '@/lib/seed';
+import { fetchState, persistState } from '@/lib/storage';
 import type { AppState, ViewId } from '@/lib/types';
 import { AppProvider } from '@/components/AppProvider';
 import { Dashboard } from '@/components/dashboard/Dashboard';
@@ -16,44 +16,43 @@ const TABS: { id: ViewId; label: string }[] = [
   { id: 'manage', label: 'Manage' },
 ];
 
-const SAVED = 'Saved locally to your account.';
+const SAVED = 'Saved to the database.';
 const SAVING = 'Saving…';
 const FAILED = 'Save failed — check connection.';
 
 export function AppShell() {
   const [state, setState] = useState<AppState | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [view, setView] = useState<ViewId>('dashboard');
   const [saveStatus, setSaveStatus] = useState(SAVED);
-  const hasLoaded = useRef(false);
+  const isFirstState = useRef(true);
 
-  // Load once on mount: stored data if there is any, otherwise the seed.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      let loaded: AppState;
-      try {
-        const raw = await readRaw();
-        loaded = raw ? migrate(JSON.parse(raw)) : freshState();
-      } catch {
-        loaded = freshState();
-      }
-      if (!cancelled) setState(loaded);
-    })();
-    return () => { cancelled = true; };
+  const load = useCallback(async () => {
+    setLoadError(null);
+    try {
+      setState(await fetchState());
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Could not reach the database.');
+    }
   }, []);
 
+  useEffect(() => { void load(); }, [load]);
+
   // Persist on change, debounced so typing does not write on every keystroke.
+  // The first state comes straight from the database, so it is not written back.
   useEffect(() => {
     if (!state) return;
-    const first = !hasLoaded.current;
-    hasLoaded.current = true;
-    if (!first) setSaveStatus(SAVING);
+    if (isFirstState.current) {
+      isFirstState.current = false;
+      return;
+    }
+    setSaveStatus(SAVING);
 
     const timer = setTimeout(() => {
-      writeRaw(JSON.stringify(state))
+      persistState(state)
         .then(() => setSaveStatus(SAVED))
         .catch(() => setSaveStatus(FAILED));
-    }, first ? 0 : 400);
+    }, 400);
 
     return () => clearTimeout(timer);
   }, [state]);
@@ -86,7 +85,13 @@ export function AppShell() {
       </nav>
 
       <div id="app">
-        {!state ? (
+        {loadError ? (
+          <div className="loading">
+            <div>Could not load your data.</div>
+            <div style={{ color: 'var(--ink-faint)', fontSize: 12, margin: '8px 0 14px' }}>{loadError}</div>
+            <button className="btn" type="button" onClick={() => void load()}>Try again</button>
+          </div>
+        ) : !state ? (
           <div className="loading">Loading…</div>
         ) : (
           <AppProvider state={state} onChange={handleChange}>

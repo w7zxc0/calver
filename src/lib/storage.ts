@@ -1,35 +1,30 @@
-import { STORAGE_KEY } from './constants';
+import type { AppState } from './types';
 
-/**
- * The original app persisted through a host-provided `window.storage` bridge.
- * That is honoured when present so existing data keeps loading; otherwise the
- * browser's own localStorage is used.
- */
-interface HostStorage {
-  get(key: string): Promise<{ value?: string | null } | null>;
-  set(key: string, value: string): Promise<unknown>;
-}
+const ENDPOINT = '/api/state';
 
-function host(): HostStorage | null {
-  if (typeof window === 'undefined') return null;
-  const s = (window as unknown as { storage?: HostStorage }).storage;
-  return s && typeof s.get === 'function' && typeof s.set === 'function' ? s : null;
-}
-
-export async function readRaw(): Promise<string | null> {
-  const h = host();
-  if (h) {
-    const res = await h.get(STORAGE_KEY);
-    return res?.value ?? null;
+async function failure(res: Response): Promise<string> {
+  try {
+    const body = await res.json();
+    if (body && typeof body.error === 'string') return body.error;
+  } catch {
+    // Non-JSON error body; fall through to the status text.
   }
-  return window.localStorage.getItem(STORAGE_KEY);
+  return `${res.status} ${res.statusText}`;
 }
 
-export async function writeRaw(value: string): Promise<void> {
-  const h = host();
-  if (h) {
-    await h.set(STORAGE_KEY, value);
-    return;
-  }
-  window.localStorage.setItem(STORAGE_KEY, value);
+/** Reads the workspace from Postgres. The server seeds it on first run. */
+export async function fetchState(): Promise<AppState> {
+  const res = await fetch(ENDPOINT, { cache: 'no-store' });
+  if (!res.ok) throw new Error(await failure(res));
+  return (await res.json()) as AppState;
+}
+
+/** Writes the workspace back to Postgres. */
+export async function persistState(state: AppState): Promise<void> {
+  const res = await fetch(ENDPOINT, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(state),
+  });
+  if (!res.ok) throw new Error(await failure(res));
 }
