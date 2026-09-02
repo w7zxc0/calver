@@ -1,15 +1,27 @@
 'use client';
 
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
-import type { AppState } from '@/lib/types';
+import { labelOf } from '@/lib/labels';
+import type { AppState, Preferences } from '@/lib/types';
 import { clone } from '@/lib/utils';
 
 interface AppContextValue {
   state: AppState;
+  prefs: Preferences;
   /** Apply a mutation to a copy of the state and commit it. */
   update: (fn: (draft: AppState) => void) => void;
   /** Swap in a whole new state, used by the data import. */
   replaceState: (next: AppState) => void;
+
+  /** Wording, with the user's override applied. */
+  label: (key: string) => string;
+  setLabel: (key: string, value: string) => void;
+  resetLabel: (key: string) => void;
+
+  setPref: <K extends keyof Preferences>(key: K, value: Preferences[K]) => void;
+  isHidden: (key: string) => boolean;
+  toggleHidden: (key: string) => void;
+
   isEditingDue: (ref: string) => boolean;
   setDueEditing: (ref: string, on: boolean) => void;
 }
@@ -40,6 +52,35 @@ export function AppProvider({ state, onChange, children }: Props) {
     [state, onChange],
   );
 
+  const label = useCallback((key: string) => labelOf(state.prefs, key), [state.prefs]);
+
+  const setLabel = useCallback(
+    (key: string, value: string) => update((draft) => { draft.prefs.labels[key] = value; }),
+    [update],
+  );
+
+  const resetLabel = useCallback(
+    (key: string) => update((draft) => { delete draft.prefs.labels[key]; }),
+    [update],
+  );
+
+  const setPref = useCallback(
+    <K extends keyof Preferences>(key: K, value: Preferences[K]) =>
+      update((draft) => { draft.prefs[key] = value; }),
+    [update],
+  );
+
+  const isHidden = useCallback((key: string) => state.prefs.hidden[key] === true, [state.prefs]);
+
+  const toggleHidden = useCallback(
+    (key: string) =>
+      update((draft) => {
+        if (draft.prefs.hidden[key]) delete draft.prefs.hidden[key];
+        else draft.prefs.hidden[key] = true;
+      }),
+    [update],
+  );
+
   const setDueEditing = useCallback((ref: string, on: boolean) => {
     setEditingDue((prev) => {
       if (on === prev.has(ref)) return prev;
@@ -53,8 +94,21 @@ export function AppProvider({ state, onChange, children }: Props) {
   const isEditingDue = useCallback((ref: string) => editingDue.has(ref), [editingDue]);
 
   const value = useMemo<AppContextValue>(
-    () => ({ state, update, replaceState: onChange, isEditingDue, setDueEditing }),
-    [state, update, onChange, isEditingDue, setDueEditing],
+    () => ({
+      state,
+      prefs: state.prefs,
+      update,
+      replaceState: onChange,
+      label,
+      setLabel,
+      resetLabel,
+      setPref,
+      isHidden,
+      toggleHidden,
+      isEditingDue,
+      setDueEditing,
+    }),
+    [state, update, onChange, label, setLabel, resetLabel, setPref, isHidden, toggleHidden, isEditingDue, setDueEditing],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

@@ -1,123 +1,134 @@
 import {
-  DEFAULT_DEPARTMENTS, DEFAULT_MEMBERS, DEFAULT_RECIPIENT_NAMES, DEFAULT_STATUSES,
-  DEFAULT_UI_COLORS, DEPT_IDS, ME_ID, NAME_TO_DEPT,
+  DEFAULT_PREFERENCES, DEFAULT_STATUS_SEED, DEFAULT_THEME, DEFAULT_UI_COLORS, ME_ID, SEED_COUNTS,
 } from './constants';
-import { plus, thisThursday, todayISO } from './date';
-import type { AppState, Member, Recipient } from './types';
+import { plus, todayISO } from './date';
+import type {
+  AppState, Department, FollowUp, Member, Preferences, Project, Recipient, Status, Task,
+} from './types';
 import { clone, shuffledPalette, uid } from './utils';
 
-export function buildDefaultMembers(): Member[] {
-  const names = DEFAULT_MEMBERS.slice();
-  if (!names.some((n) => n.toLowerCase() === 'maryam f.')) names.push('Maryam F.');
-  const colors = shuffledPalette(names.length);
-  const members: Member[] = names.map((name, i) => ({
-    id: uid(),
-    name,
-    color: colors[i % colors.length],
-    department: NAME_TO_DEPT[name.toLowerCase()] || DEPT_IDS.house,
-  }));
-  members.sort((a, b) => a.name.localeCompare(b.name));
-  return members;
-}
-
-export function buildDefaultRecipients(members: Member[] | undefined): Recipient[] {
-  const names = DEFAULT_RECIPIENT_NAMES.concat((members || []).map((m) => m.name));
-  return names.map((name) => ({ id: uid(), name }));
-}
-
+/**
+ * The starter workspace is deliberately generic — Department 1, Member 1,
+ * Project 1 — so the board can be renamed into whatever the user runs.
+ */
 export function freshState(): AppState {
-  const members = buildDefaultMembers();
+  const departments: Department[] = Array.from(
+    { length: SEED_COUNTS.departments },
+    (_, i): Department => ({ id: uid(), name: `Department ${i + 1}` }),
+  );
+
+  const memberCount = SEED_COUNTS.departments * SEED_COUNTS.membersPerDepartment;
+  const memberColors = shuffledPalette(memberCount);
+  const members: Member[] = Array.from({ length: memberCount }, (_, i): Member => ({
+    id: uid(),
+    name: `Member ${i + 1}`,
+    color: memberColors[i],
+    department: departments[Math.floor(i / SEED_COUNTS.membersPerDepartment)].id,
+  }));
+
+  const statuses: Status[] = DEFAULT_STATUS_SEED.map((s): Status => ({ id: uid(), ...s }));
+
+  const recipients: Recipient[] = Array.from(
+    { length: SEED_COUNTS.recipients },
+    (_, i): Recipient => ({ id: uid(), name: `Recipient ${i + 1}` }),
+  );
+
+  const projectColors = shuffledPalette(SEED_COUNTS.projects);
+  const projects: Project[] = Array.from({ length: SEED_COUNTS.projects }, (_, p): Project => ({
+    id: uid(),
+    name: `Project ${p + 1}`,
+    owner: '',
+    status: statuses[p % statuses.length].id,
+    notes: '',
+    open: p === 0,
+    color: projectColors[p],
+    tasks: Array.from({ length: SEED_COUNTS.tasksPerProject }, (_, t): Task => ({
+      id: uid(),
+      text: `Task ${t + 1}`,
+      done: false,
+      // A spread of states so every part of the board has something to show.
+      due: t === 0 ? plus(2 + p) : t === 1 ? plus(9 + p) : null,
+      assignee: t === 0 ? members[p % members.length].id : t === 2 ? ME_ID : '',
+    })),
+  }));
+
+  const adminQueue: FollowUp[] = Array.from(
+    { length: SEED_COUNTS.followUps },
+    (_, i): FollowUp => ({
+      id: uid(),
+      question: `Follow-up ${i + 1}`,
+      project: i === 0 ? projects[0].name : '',
+      status: 'Pending',
+      answer: '',
+      recipient: recipients[i % recipients.length]?.id ?? '',
+      added: todayISO(),
+    }),
+  );
+
   return {
     members,
-    departments: clone(DEFAULT_DEPARTMENTS),
-    statuses: clone(DEFAULT_STATUSES),
-    recipients: buildDefaultRecipients(members),
+    departments,
+    statuses,
+    recipients,
     uiColors: { ...DEFAULT_UI_COLORS },
+    prefs: clone(DEFAULT_PREFERENCES),
     generalTasks: [],
     trash: [],
-    projects: [
-      {
-        id: uid(), name: 'NixLink WiFi Program', owner: 'Usman', status: 'st_active',
-        notes: 'Operational plan complete. Document all sponsorship-route options and justify the chosen route before submission.',
-        open: true,
-        tasks: [
-          { id: uid(), text: '6-month consumer strength projection', done: false, due: plus(10), assignee: '' },
-          { id: uid(), text: 'Budget plan built from projection figures', done: false, due: plus(14), assignee: '' },
-          { id: uid(), text: 'Sponsorship proposal — document all potential routes', done: false, due: plus(18), assignee: '' },
-          { id: uid(), text: 'Justify chosen sponsorship route', done: false, due: plus(18), assignee: ME_ID },
-        ],
-      },
-      {
-        id: uid(), name: 'Nixor Tribute — Ops Plan', owner: 'Usman', status: 'st_planning',
-        notes: 'Future event. Just need the ops plan ready ahead of the event.', open: true,
-        tasks: [{ id: uid(), text: 'Draft full ops plan', done: false, due: plus(28), assignee: ME_ID }],
-      },
-      {
-        id: uid(), name: 'Rest-of-Year Ops Plans', owner: 'Usman', status: 'st_planning',
-        notes: 'All remaining event ops plans for the year, batched together.', open: true,
-        tasks: [{ id: uid(), text: 'Draft ops plans for all remaining events', done: false, due: '2026-09-30', assignee: ME_ID }],
-      },
-      {
-        id: uid(), name: 'Campus Upgrade Ops Plans (x6)', owner: 'Usman', status: 'st_active',
-        notes: 'Six separate ops plans, all due together.', open: true,
-        tasks: [1, 2, 3, 4, 5, 6].map((n) => ({
-          id: uid(), text: `Upgrade ops plan ${n}`, done: false, due: thisThursday(), assignee: '',
-        })),
-      },
-      {
-        id: uid(), name: 'Urdu Wall Painting', owner: 'Usman', status: 'st_active',
-        notes: 'Budget plan for the painter.', open: true,
-        tasks: [{ id: uid(), text: 'Build painter budget plan', done: false, due: null, assignee: ME_ID }],
-      },
-    ],
-    adminQueue: [
-      {
-        id: uid(), question: 'Can the painter bring his own equipment, or do we need to arrange it?',
-        project: 'Urdu Wall Painting', status: 'Pending', answer: '', recipient: '', added: todayISO(),
-      },
-      {
-        id: uid(), question: 'What figures should go into the sponsorship proposal?',
-        project: 'NixLink WiFi Program', status: 'Pending', answer: '', recipient: '', added: todayISO(),
-      },
-    ],
+    projects,
+    adminQueue,
   };
 }
 
-/**
- * Brings any previously stored shape up to the current one: fills in fields
- * added later, converts the old string-array member list into member records,
- * and rewrites assignees/statuses that were stored as names into ids.
- */
+/** Fills in anything a stored workspace predates, so old saves keep loading. */
+function migratePreferences(input: unknown): Preferences {
+  const base = clone(DEFAULT_PREFERENCES);
+  if (!input || typeof input !== 'object') return base;
+  const p = input as Partial<Preferences>;
+
+  return {
+    labels: p.labels && typeof p.labels === 'object' ? { ...p.labels } : base.labels,
+    theme: { ...DEFAULT_THEME, ...(p.theme && typeof p.theme === 'object' ? p.theme : {}) },
+    splits: p.splits && typeof p.splits === 'object' ? { ...p.splits } : base.splits,
+    hidden: p.hidden && typeof p.hidden === 'object' ? { ...p.hidden } : base.hidden,
+    density: p.density === 'compact' ? 'compact' : 'comfortable',
+    showTasksWithoutDue: p.showTasksWithoutDue === true,
+    showCompletedInDue: p.showCompletedInDue === true,
+    projectStripes: p.projectStripes !== false,
+  };
+}
+
 export function migrate(input: unknown): AppState {
   if (!input || typeof input !== 'object') return freshState();
   const s = input as Partial<AppState> & { members?: unknown };
 
-  if (!s.departments) s.departments = clone(DEFAULT_DEPARTMENTS);
-  if (!s.statuses) s.statuses = clone(DEFAULT_STATUSES);
+  if (!s.departments) s.departments = [];
+  if (!s.statuses || s.statuses.length === 0) {
+    s.statuses = DEFAULT_STATUS_SEED.map((st): Status => ({ id: uid(), ...st }));
+  }
   if (!s.uiColors) s.uiColors = { ...DEFAULT_UI_COLORS };
   if (!s.trash) s.trash = [];
   if (!s.generalTasks) s.generalTasks = [];
   if (!s.adminQueue) s.adminQueue = [];
   if (!s.projects) s.projects = [];
   if (!s.members) s.members = [];
+  if (!s.recipients) s.recipients = [];
 
+  // Members used to be stored as a plain array of names.
   const legacyNames = s.members as unknown[];
   if (legacyNames.length && typeof legacyNames[0] === 'string') {
-    const names = (legacyNames as string[]).slice();
-    if (!names.some((n) => n.toLowerCase() === 'maryam f.')) names.push('Maryam F.');
+    const names = legacyNames as string[];
     const colors = shuffledPalette(names.length);
     s.members = names.map((name, i) => ({
       id: uid(),
       name,
       color: colors[i % colors.length],
-      department: NAME_TO_DEPT[name.toLowerCase()] || DEPT_IDS.house,
+      department: s.departments?.[0]?.id ?? null,
     }));
   }
 
   const state = s as AppState;
-  if (!state.recipients) state.recipients = buildDefaultRecipients(state.members);
+  state.prefs = migratePreferences((s as { prefs?: unknown }).prefs);
   state.adminQueue.forEach((q) => { if (q.recipient === undefined) q.recipient = ''; });
-  state.members.sort((a, b) => a.name.localeCompare(b.name));
 
   const nameToId: Record<string, string> = {};
   state.members.forEach((m) => { nameToId[m.name.toLowerCase()] = m.id; });
@@ -129,9 +140,13 @@ export function migrate(input: unknown): AppState {
     return nameToId[String(val).toLowerCase()] || '';
   };
 
-  state.projects.forEach((p) => {
+  const projectColors = shuffledPalette(Math.max(1, state.projects.length));
+  state.projects.forEach((p, i) => {
     if (!p.tasks) p.tasks = [];
     if (p.open === undefined) p.open = false;
+    if (!p.color) p.color = projectColors[i % projectColors.length];
+    if (p.owner === undefined) p.owner = '';
+    if (p.notes === undefined) p.notes = '';
     p.tasks.forEach((t) => {
       t.assignee = convertAssignee(t.assignee);
       if (t.due === undefined) t.due = null;

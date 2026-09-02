@@ -2,8 +2,12 @@ import { ME_ID } from './constants';
 import { daysUntil } from './date';
 import type { AppState, FlatTask, Member, Status, Task, TrashItem } from './types';
 
-export function getMember(state: AppState, id: string | null | undefined): Member | null {
-  if (id === ME_ID) return { id: ME_ID, name: 'Myself', color: '', department: null };
+export function getMember(
+  state: AppState,
+  id: string | null | undefined,
+  myselfLabel = 'Myself',
+): Member | null {
+  if (id === ME_ID) return { id: ME_ID, name: myselfLabel, color: '', department: null };
   if (!id) return null;
   return state.members.find((m) => m.id === id) || null;
 }
@@ -12,16 +16,22 @@ export function getStatus(state: AppState, id: string): Status | undefined {
   return state.statuses.find((s) => s.id === id);
 }
 
-/** Members grouped by department, plus any whose department no longer exists. */
+export function getProject(state: AppState, id: string) {
+  return state.projects.find((p) => p.id === id);
+}
+
+/**
+ * Members grouped by department, plus any whose department no longer exists.
+ * Stored order is kept so the reorder actions in Manage actually stick.
+ */
 export function membersByDepartment(state: AppState) {
   const known = new Set(state.departments.map((d) => d.id));
-  const byName = (a: Member, b: Member) => a.name.localeCompare(b.name);
   return {
     groups: state.departments.map((dept) => ({
       dept,
-      members: state.members.filter((m) => m.department === dept.id).sort(byName),
+      members: state.members.filter((m) => m.department === dept.id),
     })),
-    orphans: state.members.filter((m) => !known.has(m.department ?? '')).sort(byName),
+    orphans: state.members.filter((m) => !known.has(m.department ?? '')),
   };
 }
 
@@ -32,14 +42,16 @@ export function allTasksFlat(state: AppState): FlatTask[] {
     p.tasks.forEach((t) => {
       out.push({
         ref: `p:${p.id}:${t.id}`,
-        text: t.text, done: t.done, due: t.due, assignee: t.assignee, projectName: p.name,
+        text: t.text, done: t.done, due: t.due, assignee: t.assignee,
+        projectName: p.name, projectColor: p.color,
       });
     });
   });
   state.generalTasks.forEach((t) => {
     out.push({
       ref: `g:${t.id}`,
-      text: t.text, done: t.done, due: t.due, assignee: t.assignee, projectName: null,
+      text: t.text, done: t.done, due: t.due, assignee: t.assignee,
+      projectName: null, projectColor: null,
     });
   });
   return out;
@@ -74,14 +86,14 @@ export interface DashboardStats {
   activeProjects: number;
   overdue: number;
   unassigned: number;
-  pendingFollowups: number;
-  total: number;
-  completed: number;
 }
 
+/**
+ * The three board-wide numbers. Counts that describe one window — how many
+ * tasks or follow-ups are listed — live on that window's own header instead.
+ */
 export function dashboardStats(state: AppState): DashboardStats {
-  const all = allTasksFlat(state);
-  const open = all.filter((t) => !t.done);
+  const open = allTasksFlat(state).filter((t) => !t.done);
   return {
     activeProjects: state.projects.filter((p) => {
       const st = getStatus(state, p.status);
@@ -89,9 +101,6 @@ export function dashboardStats(state: AppState): DashboardStats {
     }).length,
     overdue: open.filter((t) => t.due && (daysUntil(t.due) as number) < 0).length,
     unassigned: open.filter((t) => !t.assignee).length,
-    pendingFollowups: state.adminQueue.filter((q) => q.status !== 'Answered').length,
-    total: all.length,
-    completed: all.filter((t) => t.done).length,
   };
 }
 
@@ -118,9 +127,13 @@ export function trashLabel(item: TrashItem): string {
   }
 }
 
-export function trashTypeLabel(type: TrashItem['type']): string {
-  return {
-    project: 'Project', task: 'Task', adminQueue: 'Follow-up',
-    member: 'Team member', recipient: 'Recipient',
-  }[type] || type;
+export function trashTypeLabel(item: TrashItem, label: (key: string) => string): string {
+  switch (item.type) {
+    case 'project': return label('term.project');
+    case 'task': return label('term.task');
+    case 'adminQueue': return label('term.followUp');
+    case 'member': return label('term.member');
+    case 'recipient': return label('term.recipient');
+    default: return 'Item';
+  }
 }

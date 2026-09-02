@@ -5,9 +5,10 @@ import { moveInList } from '@/lib/mutations';
 import type { Status } from '@/lib/types';
 import { randomHex, uid } from '@/lib/utils';
 import { useApp } from '@/components/AppProvider';
+import { EditorRow, ManageBlock } from './ManageBlock';
 
 export function StatusesBlock() {
-  const { state, update } = useApp();
+  const { state, update, label } = useApp();
   const [color, setColor] = useState(() => randomHex());
   const [name, setName] = useState('');
 
@@ -17,20 +18,15 @@ export function StatusesBlock() {
       if (s) fn(s);
     });
 
-  const move = (id: string, delta: number) =>
-    update((draft) => {
-      moveInList(draft.statuses, draft.statuses.findIndex((x) => x.id === id), delta);
-    });
-
   const remove = (id: string) => {
     if (state.statuses.length <= 1) {
-      window.alert('You need at least one status.');
+      window.alert(`You need at least one ${label('term.status').toLowerCase()}.`);
       return;
     }
     const affected = state.projects.filter((p) => p.status === id).length;
     const msg = affected
-      ? `Delete this status? ${affected} project(s) using it will move to the first remaining status.`
-      : 'Delete this status?';
+      ? `Delete this ${label('term.status').toLowerCase()}? ${affected} project(s) using it will move to the first remaining one.`
+      : `Delete this ${label('term.status').toLowerCase()}?`;
     if (!window.confirm(msg)) return;
     update((draft) => {
       draft.statuses = draft.statuses.filter((x) => x.id !== id);
@@ -48,87 +44,57 @@ export function StatusesBlock() {
   };
 
   return (
-    <div className="manage-block">
-      <h2>Project Statuses</h2>
+    <ManageBlock
+      labelKey="block.statuses"
+      count={state.statuses.length}
+      note={`Order sets the sort order in ${label('tab.projects')}. A completed-type ${label('term.status').toLowerCase()} tints its cards and sinks them to the bottom.`}
+    >
       {state.statuses.map((s, i) => (
-        <div className="editor-row" key={s.id}>
-          <input
-            type="color"
-            value={s.color}
-            onChange={(e) => editStatus(s.id, (x) => { x.color = e.target.value; })}
-          />
-          <input
-            type="text"
-            value={s.name}
-            onChange={(e) => editStatus(s.id, (x) => { x.name = e.target.value; })}
-          />
-          <label>
-            <input
-              type="checkbox"
-              checked={s.terminal}
-              onChange={(e) => editStatus(s.id, (x) => { x.terminal = e.target.checked; })}
-            />{' '}
-            completed-type
-          </label>
-          <button className="rm" disabled={i === 0} title="Move up" onClick={() => move(s.id, -1)}>↑</button>
-          <button
-            className="rm"
-            disabled={i === state.statuses.length - 1}
-            title="Move down"
-            onClick={() => move(s.id, 1)}
-          >
-            ↓
-          </button>
-          <button className="rm" title="Delete status" onClick={() => remove(s.id)}>🗑</button>
-        </div>
+        <EditorRow
+          key={s.id}
+          color={s.color}
+          onColor={(next) => editStatus(s.id, (x) => { x.color = next; })}
+          name={s.name}
+          onRename={(next) => editStatus(s.id, (x) => { x.name = next; })}
+          menuItems={[
+            {
+              label: 'Completed-type',
+              checked: s.terminal,
+              onSelect: () => editStatus(s.id, (x) => { x.terminal = !x.terminal; }),
+            },
+            { label: 'Random colour', onSelect: () => editStatus(s.id, (x) => { x.color = randomHex(); }) },
+            {
+              label: 'Move up',
+              disabled: i === 0,
+              onSelect: () => update((draft) => moveInList(draft.statuses, i, -1)),
+            },
+            {
+              label: 'Move down',
+              disabled: i === state.statuses.length - 1,
+              onSelect: () => update((draft) => moveInList(draft.statuses, i, 1)),
+            },
+            'separator',
+            { label: 'Delete', onSelect: () => remove(s.id), danger: true },
+          ]}
+        >
+          <span className="editor-hint">
+            {state.projects.filter((p) => p.status === s.id).length} in use
+            {s.terminal ? ' · completed-type' : ''}
+          </span>
+        </EditorRow>
       ))}
+
       <div className="add-row">
         <input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
         <input
           type="text"
-          placeholder="Add a status"
+          placeholder={`Add a ${label('term.status').toLowerCase()}`}
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') add(); }}
         />
         <button type="button" onClick={add}>Add</button>
       </div>
-      <div className="manage-note">
-        Order sets sort order in Projects. &quot;Completed-type&quot; gives the tinted, sunk-to-bottom treatment.
-      </div>
-    </div>
-  );
-}
-
-export function LabelColorsBlock() {
-  const { state, update } = useApp();
-
-  return (
-    <div className="manage-block">
-      <h2>Due List Label Colors</h2>
-      <div className="editor-row">
-        <input
-          type="color"
-          value={state.uiColors.project}
-          onChange={(e) => {
-            const v = e.target.value;
-            update((draft) => { draft.uiColors.project = v; });
-          }}
-        />
-        <span style={{ flex: 1, fontSize: '12.5px', color: 'var(--ink-soft)' }}>Project label color</span>
-      </div>
-      <div className="editor-row">
-        <input
-          type="color"
-          value={state.uiColors.general}
-          onChange={(e) => {
-            const v = e.target.value;
-            update((draft) => { draft.uiColors.general = v; });
-          }}
-        />
-        <span style={{ flex: 1, fontSize: '12.5px', color: 'var(--ink-soft)' }}>General task label color</span>
-      </div>
-      <div className="manage-note">Colors used on the little pills next to due tasks.</div>
-    </div>
+    </ManageBlock>
   );
 }

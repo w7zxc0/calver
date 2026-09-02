@@ -1,15 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { DEPT_IDS } from '@/lib/constants';
-import { reassignAwayFromMember, trashPush } from '@/lib/mutations';
+import { moveInList, reassignAwayFromMember, trashPush } from '@/lib/mutations';
 import { membersByDepartment } from '@/lib/selectors';
 import type { Member } from '@/lib/types';
-import { randomHex, uid } from '@/lib/utils';
+import { randomHex, shuffledPalette, uid } from '@/lib/utils';
 import { useApp } from '@/components/AppProvider';
+import { EditorRow, ManageBlock } from './ManageBlock';
 
 export function MembersBlock() {
-  const { state, update } = useApp();
+  const { state, update, label } = useApp();
   const { groups, orphans } = membersByDepartment(state);
 
   const editMember = (id: string, fn: (m: Member) => void) =>
@@ -31,40 +31,81 @@ export function MembersBlock() {
     });
   };
 
+  const duplicateMember = (id: string) =>
+    update((draft) => {
+      const m = draft.members.find((x) => x.id === id);
+      if (!m) return;
+      draft.members.push({ ...m, id: uid(), name: `${m.name} copy` });
+    });
+
   const row = (m: Member) => (
-    <div className="editor-row" key={m.id}>
-      <input
-        type="color"
-        value={m.color}
-        onChange={(e) => editMember(m.id, (x) => { x.color = e.target.value; })}
-      />
-      <input
-        type="text"
-        value={m.name}
-        onChange={(e) => editMember(m.id, (x) => { x.name = e.target.value; })}
-      />
+    <EditorRow
+      key={m.id}
+      color={m.color}
+      onColor={(color) => editMember(m.id, (x) => { x.color = color; })}
+      name={m.name}
+      onRename={(next) => editMember(m.id, (x) => { x.name = next; })}
+      menuItems={[
+        { label: 'Random colour', onSelect: () => editMember(m.id, (x) => { x.color = randomHex(); }) },
+        { label: 'Duplicate', onSelect: () => duplicateMember(m.id) },
+        {
+          label: 'Move up',
+          onSelect: () => update((draft) => moveInList(draft.members, draft.members.findIndex((x) => x.id === m.id), -1)),
+        },
+        {
+          label: 'Move down',
+          onSelect: () => update((draft) => moveInList(draft.members, draft.members.findIndex((x) => x.id === m.id), 1)),
+        },
+        'separator',
+        { label: 'Move to trash', onSelect: () => removeMember(m.id), danger: true },
+      ]}
+    >
       <select
         value={m.department ?? ''}
-        onChange={(e) => editMember(m.id, (x) => { x.department = e.target.value; })}
+        onChange={(e) => {
+          const dept = e.target.value;
+          editMember(m.id, (x) => { x.department = dept; });
+        }}
       >
         {state.departments.map((d) => (
           <option key={d.id} value={d.id}>{d.name}</option>
         ))}
+        {m.department && !state.departments.some((d) => d.id === m.department) && (
+          <option value={m.department}>Unsorted</option>
+        )}
       </select>
-      <button className="rm" title="Move to trash" onClick={() => removeMember(m.id)}>🗑</button>
-    </div>
+    </EditorRow>
   );
 
   return (
-    <div className="manage-block">
-      <h2>Team Members</h2>
-
+    <ManageBlock
+      labelKey="block.members"
+      count={state.members.length}
+      extraItems={[
+        {
+          label: 'Recolour everyone',
+          onSelect: () =>
+            update((draft) => {
+              const colors = shuffledPalette(draft.members.length);
+              draft.members.forEach((m, i) => { m.color = colors[i]; });
+            }),
+        },
+        {
+          label: 'Sort A-Z',
+          onSelect: () => update((draft) => draft.members.sort((a, b) => a.name.localeCompare(b.name))),
+        },
+      ]}
+      note={
+        <>
+          Rename, recolour, or move anyone between {label('term.department').toLowerCase()}s — changes
+          apply everywhere instantly. &quot;{label('term.myself')}&quot; is a fixed identity kept
+          separate from this list.
+        </>
+      }
+    >
       {groups.map(({ dept, members }) => (
         <div key={dept.id}>
-          <div className="dept-heading">
-            {dept.name}
-            {dept.id === DEPT_IDS.ops && <span className="me-pin"> + Myself</span>}
-          </div>
+          <div className="dept-heading">{dept.name}</div>
           {members.length === 0 ? (
             <div className="manage-note" style={{ marginTop: 0 }}>No one here yet.</div>
           ) : (
@@ -81,17 +122,12 @@ export function MembersBlock() {
       )}
 
       <AddMemberRow />
-
-      <div className="manage-note">
-        Rename, recolor, or move anyone between departments — changes apply everywhere instantly.
-        &quot;Myself&quot; is a fixed identity kept separate from this list.
-      </div>
-    </div>
+    </ManageBlock>
   );
 }
 
 function AddMemberRow() {
-  const { state, update } = useApp();
+  const { state, update, label } = useApp();
   const [color, setColor] = useState(() => randomHex());
   const [name, setName] = useState('');
   const [deptId, setDeptId] = useState(state.departments[0]?.id ?? '');
@@ -112,7 +148,7 @@ function AddMemberRow() {
       <input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
       <input
         type="text"
-        placeholder="Add a team member"
+        placeholder={`Add a ${label('term.member').toLowerCase()}`}
         value={name}
         onChange={(e) => setName(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter') add(); }}

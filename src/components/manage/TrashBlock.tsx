@@ -4,9 +4,11 @@ import { fmtDate } from '@/lib/date';
 import { restoreTrashItem } from '@/lib/mutations';
 import { trashLabel, trashTypeLabel } from '@/lib/selectors';
 import { useApp } from '@/components/AppProvider';
+import { OverflowMenu } from '@/components/ui/OverflowMenu';
+import { ManageBlock } from './ManageBlock';
 
 export function TrashBlock() {
-  const { state, update } = useApp();
+  const { state, update, label } = useApp();
 
   const restore = (id: string) => update((draft) => restoreTrashItem(draft, id));
 
@@ -16,10 +18,29 @@ export function TrashBlock() {
   };
 
   return (
-    <div className="manage-block">
-      <h2>
-        Trash <span className="count">{state.trash.length}</span>
-      </h2>
+    <ManageBlock
+      labelKey="block.trash"
+      count={state.trash.length}
+      extraItems={[
+        {
+          label: 'Restore everything',
+          disabled: state.trash.length === 0,
+          onSelect: () =>
+            update((draft) => {
+              draft.trash.slice().forEach((item) => restoreTrashItem(draft, item.id));
+            }),
+        },
+        {
+          label: 'Empty trash',
+          danger: true,
+          disabled: state.trash.length === 0,
+          onSelect: () => {
+            if (!window.confirm(`Permanently delete ${state.trash.length} item(s)?`)) return;
+            update((draft) => { draft.trash = []; });
+          },
+        },
+      ]}
+    >
       {state.trash.length === 0 && (
         <div className="manage-note" style={{ marginTop: 0 }}>
           Empty. Anything you delete shows up here so you can bring it back.
@@ -33,7 +54,7 @@ export function TrashBlock() {
             <div className="txt">
               <div className="name">{trashLabel(item)}</div>
               <div className="sub">
-                {trashTypeLabel(item.type)} &middot; deleted {fmtDate(item.deletedAt)}
+                {trashTypeLabel(item, label)} &middot; deleted {fmtDate(item.deletedAt)}
               </div>
             </div>
             <div className="tags" style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -44,10 +65,16 @@ export function TrashBlock() {
               >
                 Restore
               </button>
-              <button className="rm" title="Delete forever" onClick={() => purge(item.id)}>🗑</button>
+              <OverflowMenu
+                items={[
+                  { label: 'Restore', onSelect: () => restore(item.id) },
+                  'separator',
+                  { label: 'Delete forever', onSelect: () => purge(item.id), danger: true },
+                ]}
+              />
             </div>
           </div>
         ))}
-    </div>
+    </ManageBlock>
   );
 }

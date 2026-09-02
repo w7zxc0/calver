@@ -4,9 +4,10 @@ import { useState } from 'react';
 import { moveInList, reassignAwayFromRecipient, trashPush } from '@/lib/mutations';
 import { uid } from '@/lib/utils';
 import { useApp } from '@/components/AppProvider';
+import { EditorRow, ManageBlock } from './ManageBlock';
 
 export function RecipientsBlock() {
-  const { state, update } = useApp();
+  const { state, update, label } = useApp();
   const [newName, setNewName] = useState('');
 
   const rename = (id: string, name: string) =>
@@ -15,14 +16,9 @@ export function RecipientsBlock() {
       if (r) r.name = name;
     });
 
-  const move = (id: string, delta: number) =>
-    update((draft) => {
-      moveInList(draft.recipients, draft.recipients.findIndex((x) => x.id === id), delta);
-    });
-
   const remove = (id: string) => {
     if (state.recipients.length <= 1) {
-      window.alert('You need at least one recipient.');
+      window.alert(`You need at least one ${label('term.recipient').toLowerCase()}.`);
       return;
     }
     const r = state.recipients.find((x) => x.id === id);
@@ -45,34 +41,60 @@ export function RecipientsBlock() {
   };
 
   return (
-    <div className="manage-block">
-      <h2>Follow-up Recipients</h2>
+    <ManageBlock
+      labelKey="block.recipients"
+      count={state.recipients.length}
+      extraItems={[
+        {
+          label: 'Add from team members',
+          onSelect: () =>
+            update((draft) => {
+              draft.members.forEach((m) => {
+                if (!draft.recipients.some((r) => r.name === m.name)) {
+                  draft.recipients.push({ id: uid(), name: m.name });
+                }
+              });
+            }),
+        },
+      ]}
+      note={`Who a ${label('term.followUp').toLowerCase()} can be directed to, on the ${label('tab.dashboard')}.`}
+    >
       {state.recipients.map((r, i) => (
-        <div className="editor-row" key={r.id}>
-          <input type="text" value={r.name} onChange={(e) => rename(r.id, e.target.value)} />
-          <button className="rm" disabled={i === 0} title="Move up" onClick={() => move(r.id, -1)}>↑</button>
-          <button
-            className="rm"
-            disabled={i === state.recipients.length - 1}
-            title="Move down"
-            onClick={() => move(r.id, 1)}
-          >
-            ↓
-          </button>
-          <button className="rm" title="Move to trash" onClick={() => remove(r.id)}>🗑</button>
-        </div>
+        <EditorRow
+          key={r.id}
+          name={r.name}
+          onRename={(next) => rename(r.id, next)}
+          menuItems={[
+            {
+              label: 'Move up',
+              disabled: i === 0,
+              onSelect: () => update((draft) => moveInList(draft.recipients, i, -1)),
+            },
+            {
+              label: 'Move down',
+              disabled: i === state.recipients.length - 1,
+              onSelect: () => update((draft) => moveInList(draft.recipients, i, 1)),
+            },
+            'separator',
+            { label: 'Move to trash', onSelect: () => remove(r.id), danger: true },
+          ]}
+        >
+          <span className="editor-hint">
+            {state.adminQueue.filter((q) => q.recipient === r.id).length} open
+          </span>
+        </EditorRow>
       ))}
+
       <div className="add-row">
         <input
           type="text"
-          placeholder="Add a recipient"
+          placeholder={`Add a ${label('term.recipient').toLowerCase()}`}
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') add(); }}
         />
         <button type="button" onClick={add}>Add</button>
       </div>
-      <div className="manage-note">Who a follow-up can be directed to, on the Dashboard.</div>
-    </div>
+    </ManageBlock>
   );
 }

@@ -42,6 +42,8 @@ export interface Project {
   status: ID;
   notes: string;
   open: boolean;
+  /** Accent colour that makes the card distinguishable at a glance. */
+  color: string;
   tasks: Task[];
 }
 
@@ -71,12 +73,44 @@ export interface UiColors {
   general: string;
 }
 
+/** Every colour the interface paints itself with, all user-editable. */
+export interface Theme {
+  paper: string;
+  panel: string;
+  panelRaised: string;
+  ink: string;
+  inkSoft: string;
+  inkFaint: string;
+  line: string;
+  accent: string;
+}
+
+export type Density = 'comfortable' | 'compact';
+
+export interface Preferences {
+  /** Overrides for any label key; anything missing falls back to the default. */
+  labels: Record<string, string>;
+  theme: Theme;
+  /** Left-pane width as a 0-1 ratio, keyed by split id. */
+  splits: Record<string, number>;
+  /** Keyed by panel or stat id; true means hidden. */
+  hidden: Record<string, boolean>;
+  density: Density;
+  /** Whether the due window also lists tasks that have no due date. */
+  showTasksWithoutDue: boolean;
+  /** Whether completed tasks stay visible in the due window. */
+  showCompletedInDue: boolean;
+  /** Show the coloured stripe that separates one project card from the next. */
+  projectStripes: boolean;
+}
+
 export interface AppState {
   members: Member[];
   departments: Department[];
   statuses: Status[];
   recipients: Recipient[];
   uiColors: UiColors;
+  prefs: Preferences;
   generalTasks: Task[];
   trash: TrashItem[];
   projects: Project[];
@@ -91,6 +125,9 @@ export interface FlatTask {
   due: string | null;
   assignee: AssigneeId;
   projectName: string | null;
+  projectColor: string | null;
 }
 
 export type ViewId = 'dashboard' | 'projects' | 'manage';
+
+export type ManageSection = 'people' | 'workflow' | 'appearance' | 'labels' | 'layout' | 'data';

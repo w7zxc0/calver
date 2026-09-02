@@ -9,13 +9,18 @@ import { ensureSchema } from './schema';
 /** Single-user app, so everything lives under one workspace row. */
 export const DEFAULT_WORKSPACE = 'default';
 
-interface WorkspaceRow { ui_project_color: string; ui_general_color: string }
+interface WorkspaceRow {
+  ui_project_color: string;
+  ui_general_color: string;
+  preferences: unknown;
+}
 interface DepartmentRow { id: string; name: string }
 interface MemberRow { id: string; name: string; color: string; department_id: string | null }
 interface StatusRow { id: string; name: string; color: string; terminal: boolean }
 interface RecipientRow { id: string; name: string }
 interface ProjectRow {
-  id: string; name: string; owner: string; status_id: string | null; notes: string; is_open: boolean;
+  id: string; name: string; owner: string; status_id: string | null; notes: string;
+  color: string; is_open: boolean;
 }
 interface TaskRow {
   id: string; project_id: string | null; title: string; done: boolean; due: string | null; assignee: string;
@@ -34,7 +39,7 @@ export async function loadState(workspaceId = DEFAULT_WORKSPACE): Promise<AppSta
   const pool = getPool();
 
   const workspace = await pool.query<WorkspaceRow>(
-    'SELECT ui_project_color, ui_general_color FROM workspaces WHERE id = $1',
+    'SELECT ui_project_color, ui_general_color, preferences FROM workspaces WHERE id = $1',
     [workspaceId],
   );
   if (workspace.rowCount === 0) return null;
@@ -45,7 +50,7 @@ export async function loadState(workspaceId = DEFAULT_WORKSPACE): Promise<AppSta
     pool.query<MemberRow>('SELECT id, name, color, department_id FROM members WHERE workspace_id = $1 ORDER BY position', args),
     pool.query<StatusRow>('SELECT id, name, color, terminal FROM statuses WHERE workspace_id = $1 ORDER BY position', args),
     pool.query<RecipientRow>('SELECT id, name FROM recipients WHERE workspace_id = $1 ORDER BY position', args),
-    pool.query<ProjectRow>('SELECT id, name, owner, status_id, notes, is_open FROM projects WHERE workspace_id = $1 ORDER BY position', args),
+    pool.query<ProjectRow>('SELECT id, name, owner, status_id, notes, color, is_open FROM projects WHERE workspace_id = $1 ORDER BY position', args),
     pool.query<TaskRow>('SELECT id, project_id, title, done, due, assignee FROM tasks WHERE workspace_id = $1 ORDER BY position', args),
     pool.query<FollowUpRow>('SELECT id, question, project_name, status, answer, recipient_id, added FROM follow_ups WHERE workspace_id = $1 ORDER BY position', args),
     pool.query<TrashRow>('SELECT id, kind, payload, extra, deleted_at FROM trash WHERE workspace_id = $1 ORDER BY position', args),
@@ -80,12 +85,15 @@ export async function loadState(workspaceId = DEFAULT_WORKSPACE): Promise<AppSta
       project: workspace.rows[0].ui_project_color || DEFAULT_UI_COLORS.project,
       general: workspace.rows[0].ui_general_color || DEFAULT_UI_COLORS.general,
     },
+    // Filled in properly by migrate() once the document is assembled.
+    prefs: workspace.rows[0].preferences as AppState['prefs'],
     projects: projects.rows.map((r): Project => ({
       id: r.id,
       name: r.name,
       owner: r.owner,
       status: r.status_id ?? '',
       notes: r.notes,
+      color: r.color,
       open: r.is_open,
       tasks: tasksByProject.get(r.id) ?? [],
     })),
@@ -122,13 +130,14 @@ export async function saveState(state: AppState, workspaceId = DEFAULT_WORKSPACE
     await client.query('BEGIN');
 
     await client.query(
-      `INSERT INTO workspaces (id, ui_project_color, ui_general_color)
-       VALUES ($1, $2, $3)
+      `INSERT INTO workspaces (id, ui_project_color, ui_general_color, preferences)
+       VALUES ($1, $2, $3, $4)
        ON CONFLICT (id) DO UPDATE
          SET ui_project_color = EXCLUDED.ui_project_color,
              ui_general_color = EXCLUDED.ui_general_color,
+             preferences = EXCLUDED.preferences,
              updated_at = now()`,
-      [workspaceId, state.uiColors.project, state.uiColors.general],
+      [workspaceId, state.uiColors.project, state.uiColors.general, JSON.stringify(state.prefs)],
     );
 
     // Children first so the task -> project foreign key stays satisfied.
@@ -149,9 +158,9 @@ export async function saveState(state: AppState, workspaceId = DEFAULT_WORKSPACE
       state.members.map((m, i) => [workspaceId, m.id, m.name, m.color, m.department || null, i]));
 
     await insertRows(client, 'projects',
-      ['workspace_id', 'id', 'name', 'owner', 'status_id', 'notes', 'is_open', 'position'],
+      ['workspace_id', 'id', 'name', 'owner', 'status_id', 'notes', 'color', 'is_open', 'position'],
       state.projects.map((p, i) => [
-        workspaceId, p.id, p.name, p.owner || '', p.status || null, p.notes || '', !!p.open, i,
+        workspaceId, p.id, p.name, p.owner || '', p.status || null, p.notes || '', p.color || '', !!p.open, i,
       ]));
 
     const taskRows: unknown[][] = [];

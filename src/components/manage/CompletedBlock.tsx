@@ -3,7 +3,9 @@
 import { trashPush } from '@/lib/mutations';
 import { allTasksFlat, findTaskByRef } from '@/lib/selectors';
 import { useApp } from '@/components/AppProvider';
+import { OverflowMenu } from '@/components/ui/OverflowMenu';
 import { AssigneeLabel, ProjectOrGeneralLabel } from '@/components/ui/Pills';
+import { ManageBlock } from './ManageBlock';
 
 export function CompletedBlock() {
   const { state, update } = useApp();
@@ -30,10 +32,39 @@ export function CompletedBlock() {
     });
 
   return (
-    <div className="manage-block">
-      <h2>
-        Completed Tasks <span className="count">{completed.length}</span>
-      </h2>
+    <ManageBlock
+      labelKey="block.completed"
+      count={completed.length}
+      extraItems={[
+        {
+          label: 'Reopen all',
+          disabled: completed.length === 0,
+          onSelect: () =>
+            update((draft) => {
+              draft.projects.forEach((p) => p.tasks.forEach((t) => { t.done = false; }));
+              draft.generalTasks.forEach((t) => { t.done = false; });
+            }),
+        },
+        {
+          label: 'Move all to trash',
+          danger: true,
+          disabled: completed.length === 0,
+          onSelect: () => {
+            if (!window.confirm(`Move ${completed.length} completed task(s) to trash?`)) return;
+            update((draft) => {
+              completed.forEach((t) => {
+                const handle = findTaskByRef(draft, t.ref);
+                if (!handle) return;
+                trashPush(draft, {
+                  type: 'task', payload: handle.task, extra: { projectId: handle.projectId },
+                });
+                handle.remove();
+              });
+            });
+          },
+        },
+      ]}
+    >
       {completed.length === 0 && (
         <div className="manage-note" style={{ marginTop: 0 }}>Nothing completed yet.</div>
       )}
@@ -47,11 +78,17 @@ export function CompletedBlock() {
           </div>
           <div className="tags">
             <AssigneeLabel assignee={t.assignee} />
-            <ProjectOrGeneralLabel projectName={t.projectName} />
+            <ProjectOrGeneralLabel projectName={t.projectName} projectColor={t.projectColor} />
           </div>
-          <button className="rm" title="Move to trash" onClick={() => remove(t.ref)}>🗑</button>
+          <OverflowMenu
+            items={[
+              { label: 'Mark as not done', onSelect: () => uncomplete(t.ref) },
+              'separator',
+              { label: 'Move to trash', onSelect: () => remove(t.ref), danger: true },
+            ]}
+          />
         </div>
       ))}
-    </div>
+    </ManageBlock>
   );
 }

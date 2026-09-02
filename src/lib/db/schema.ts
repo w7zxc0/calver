@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS workspaces (
   id                 text PRIMARY KEY,
   ui_project_color   text NOT NULL,
   ui_general_color   text NOT NULL,
+  preferences        jsonb NOT NULL DEFAULT '{}'::jsonb,
   updated_at         timestamptz NOT NULL DEFAULT now()
 );
 
@@ -57,6 +58,7 @@ CREATE TABLE IF NOT EXISTS projects (
   owner        text NOT NULL DEFAULT '',
   status_id    text,
   notes        text NOT NULL DEFAULT '',
+  color        text NOT NULL DEFAULT '',
   is_open      boolean NOT NULL DEFAULT false,
   position     integer NOT NULL,
   PRIMARY KEY (workspace_id, id)
@@ -101,6 +103,10 @@ CREATE TABLE IF NOT EXISTS trash (
 );
 
 CREATE INDEX IF NOT EXISTS tasks_by_project ON tasks (workspace_id, project_id);
+
+-- Columns added after the first release; safe to run against an existing database.
+ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS preferences jsonb NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE projects   ADD COLUMN IF NOT EXISTS color text NOT NULL DEFAULT '';
 `;
 
 let ready: Promise<void> | null = null;

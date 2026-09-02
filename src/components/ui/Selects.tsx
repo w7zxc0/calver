@@ -14,7 +14,7 @@ interface SelectProps {
 
 /** Unassigned / Myself / members grouped by department. */
 export function MemberSelect({ value, onChange, className = 'assignee-select', title, draggable }: SelectProps) {
-  const { state } = useApp();
+  const { state, label } = useApp();
   const { groups, orphans } = membersByDepartment(state);
   return (
     <select
@@ -24,8 +24,8 @@ export function MemberSelect({ value, onChange, className = 'assignee-select', t
       value={value}
       onChange={(e) => onChange(e.target.value)}
     >
-      <option value="">Unassigned</option>
-      <option value={ME_ID}>Myself</option>
+      <option value="">{label('term.unassigned')}</option>
+      <option value={ME_ID}>{label('term.myself')}</option>
       {groups
         .filter((g) => g.members.length > 0)
         .map((g) => (
@@ -47,10 +47,10 @@ export function MemberSelect({ value, onChange, className = 'assignee-select', t
 }
 
 export function ProjectSelect({ value, onChange, className, title }: SelectProps) {
-  const { state } = useApp();
+  const { state, label } = useApp();
   return (
     <select className={className} title={title} value={value} onChange={(e) => onChange(e.target.value)}>
-      <option value="">General (no project)</option>
+      <option value="">{label('term.general')}</option>
       {state.projects.map((p) => (
         <option key={p.id} value={p.id}>{p.name}</option>
       ))}
@@ -59,10 +59,10 @@ export function ProjectSelect({ value, onChange, className, title }: SelectProps
 }
 
 export function RecipientSelect({ value, onChange, className = 'assignee-select', title }: SelectProps) {
-  const { state } = useApp();
+  const { state, label } = useApp();
   return (
     <select className={className} title={title} value={value} onChange={(e) => onChange(e.target.value)}>
-      <option value="">Unassigned</option>
+      <option value="">{label('term.unassigned')}</option>
       {state.recipients.map((r) => (
         <option key={r.id} value={r.id}>{r.name}</option>
       ))}

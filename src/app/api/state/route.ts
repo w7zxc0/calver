@@ -8,12 +8,14 @@ export const dynamic = 'force-dynamic';
 /** Returns the stored workspace, seeding it on first run. */
 export async function GET() {
   try {
-    let state = await loadState();
-    if (!state) {
-      state = freshState();
-      await saveState(state);
+    const stored = await loadState();
+    if (!stored) {
+      const seeded = freshState();
+      await saveState(seeded);
+      return NextResponse.json(seeded);
     }
-    return NextResponse.json(state);
+    // migrate() fills in anything the stored rows predate, preferences included.
+    return NextResponse.json(migrate(stored));
   } catch (err) {
     console.error('GET /api/state failed', err);
     return NextResponse.json({ error: message(err) }, { status: 500 });

@@ -37,26 +37,36 @@ header.top{
   display:flex; align-items:baseline; justify-content:space-between; gap:12px;
   border-bottom:1px solid var(--line); padding-bottom:16px; margin-bottom:6px; flex-wrap:wrap;
 }
-header.top h1{ font-family:'Lato',sans-serif; font-weight:900; font-size:21px; margin:0; letter-spacing:-0.01em; color:var(--ink); }
+header.top h1{ font-family:'Lato',sans-serif; font-weight:900; font-size:21px; margin:0; letter-spacing:-0.01em; color:var(--ink); display:flex; align-items:center; gap:4px; }
 header.top .date{ color:var(--ink-soft); font-size:12px; }
 
 nav.tabs{
   display:flex; gap:4px; margin:20px 0 22px; background:var(--panel);
   border:1px solid var(--line); padding:4px; border-radius:9px;
 }
-nav.tabs button{
-  background:none; border:none; flex:1; padding:9px 14px; font-size:13.5px; color:var(--ink-soft);
-  cursor:pointer; border-radius:6px; font-family:inherit; font-weight:600; transition:background .15s ease, color .15s ease;
+nav.tabs .tab{
+  flex:1; display:flex; align-items:center; gap:2px; border-radius:6px; padding-right:4px;
+  transition:background .15s ease;
 }
-nav.tabs button.active{ color:var(--paper); background:var(--accent); }
-nav.tabs button:not(.active):hover{ color:var(--ink); background:var(--panel-raised); }
+nav.tabs .tab button{
+  background:none; border:none; flex:1; padding:9px 12px; font-size:13.5px; color:var(--ink-soft);
+  cursor:pointer; border-radius:6px; font-family:inherit; font-weight:600; text-align:center;
+  transition:color .15s ease;
+}
+nav.tabs .tab.active{ background:var(--accent); }
+nav.tabs .tab.active button{ color:var(--paper); }
+nav.tabs .tab.active .dots{ color:var(--paper); opacity:.75; }
+nav.tabs .tab:not(.active):hover{ background:var(--panel-raised); }
+nav.tabs .tab:not(.active):hover button{ color:var(--ink); }
 
 .view{ display:none; }
 .view.active{ display:block; }
 
 /* ---- stats bar ---- */
 .stats-bar{ display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
-.stat{ background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:10px 14px; flex:1; min-width:110px; text-align:center; }
+.stat{ background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:10px 14px; flex:1; min-width:110px; text-align:center; position:relative; }
+.stat .stat-menu{ position:absolute; top:4px; right:4px; opacity:0; transition:opacity .12s ease; }
+.stat:hover .stat-menu, .stat .menu-wrap:has(.dots-open){ opacity:1; }
 .stat-num{ display:block; font-size:19px; font-weight:900; color:var(--ink); }
 .stat-label{ display:block; font-size:10px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.05em; margin-top:2px; }
 .stat.stat-warn .stat-num{ color:var(--red); }
@@ -229,3 +239,173 @@ input:focus, select:focus, textarea:focus, button:focus-visible{ outline:2px sol
 /* Grids of manage blocks stack, so the gap between rows comes from here. */
 .manage-grid{ margin-bottom:16px; }
 .manage-grid:last-child{ margin-bottom:0; }
+
+/* ============================================================
+   Overflow menus
+   ============================================================ */
+.menu-wrap{ position:relative; display:inline-flex; flex:none; }
+.dots{
+  background:none; border:none; color:var(--ink-faint); cursor:pointer; font-size:15px; line-height:1;
+  padding:2px 6px; border-radius:6px; font-family:inherit; letter-spacing:1px;
+  transition:color .12s ease, background .12s ease;
+}
+.dots:hover, .dots-open{ color:var(--ink); background:var(--panel-raised); }
+.menu{
+  position:absolute; top:calc(100% + 4px); z-index:40; min-width:186px; padding:5px;
+  background:var(--panel-raised); border:1px solid var(--line); border-radius:9px;
+  box-shadow:0 12px 30px rgba(0,0,0,0.38);
+}
+.menu-right{ right:0; }
+.menu-left{ left:0; }
+.menu-header{ padding:6px 8px 8px; border-bottom:1px solid var(--line); margin-bottom:4px; }
+.menu-color{ display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:11.5px; color:var(--ink-soft); }
+.menu-color input[type=color]{ width:30px; height:24px; padding:0; border:1px solid var(--line); border-radius:6px; background:none; cursor:pointer; }
+.menu-item{
+  display:flex; align-items:center; gap:7px; width:100%; text-align:left; background:none; border:none;
+  color:var(--ink); font-family:inherit; font-size:12.5px; padding:7px 9px; border-radius:6px; cursor:pointer;
+}
+.menu-item:hover:not(:disabled){ background:var(--panel); }
+.menu-item:disabled{ color:var(--ink-faint); cursor:default; }
+.menu-item.danger{ color:var(--red); }
+.menu-item.danger:hover:not(:disabled){ background:var(--red-bg); }
+.menu-tick{ width:11px; flex:none; color:var(--accent); font-size:11px; }
+.menu-sep{ height:1px; background:var(--line); margin:4px 2px; }
+
+/* ============================================================
+   Inline renaming
+   ============================================================ */
+.inline-edit{
+  font-family:inherit; font-size:inherit; font-weight:inherit; color:var(--ink);
+  background:var(--paper); border:1px solid var(--accent); border-radius:6px;
+  padding:2px 6px; min-width:120px; width:100%; max-width:100%;
+}
+textarea.inline-edit{ resize:vertical; line-height:1.4; }
+
+/* ============================================================
+   Panel and block headings
+   ============================================================ */
+.panel-title{ display:flex; align-items:center; gap:8px; min-width:0; flex:1; }
+.panel-tools{ display:flex; align-items:center; gap:6px; flex:none; }
+.manage-block h2 .panel-title{ text-transform:none; font-size:11.5px; letter-spacing:0.06em; }
+
+/* ============================================================
+   Resizable side-by-side windows
+   ============================================================ */
+.split{ display:grid; gap:0; align-items:start; margin-bottom:16px; }
+.split-stacked{ grid-template-columns:1fr; gap:16px; }
+.split-solo{ margin-bottom:16px; }
+.split-handle{
+  align-self:stretch; display:flex; align-items:center; justify-content:center;
+  cursor:col-resize; background:none; border:none; touch-action:none;
+}
+.split-grip{
+  width:3px; height:46px; border-radius:3px; background:var(--line);
+  transition:background .12s ease, height .12s ease;
+}
+.split-handle:hover .split-grip, .split-handle.dragging .split-grip{ background:var(--accent); height:74px; }
+.split-handle:focus-visible{ outline:2px solid var(--accent); outline-offset:-2px; border-radius:6px; }
+
+/* ============================================================
+   Projects: telling one card from the next
+   ============================================================ */
+.proj-card{ margin-bottom:14px; }
+.proj-card.striped{ border-left:3px solid var(--proj-accent); }
+.proj-card.is-open{ box-shadow:0 10px 24px rgba(0,0,0,0.16); }
+.proj-swatch{ width:9px; height:9px; border-radius:3px; flex:none; }
+.proj-headings{ min-width:0; }
+.proj-head .left{ gap:9px; }
+.proj-actions{ display:flex; align-items:center; gap:4px; flex:none; }
+.proj-body{ padding-top:4px; }
+.po-dot{ display:inline-block; width:7px; height:7px; border-radius:2px; margin-right:7px; vertical-align:middle; }
+
+.toolbar{ display:flex; gap:8px; align-items:center; margin-bottom:14px; flex-wrap:wrap; }
+.toolbar-search{
+  flex:1 1 200px; min-width:160px; padding:8px 10px; border:1px solid var(--line);
+  background:var(--panel); color:var(--ink); border-radius:7px; font-family:inherit; font-size:13px;
+}
+.toolbar-menu{ margin-left:auto; }
+.ghost-btn{
+  background:none; border:1px solid var(--line); color:var(--ink-soft); border-radius:7px;
+  padding:7px 12px; font-family:inherit; font-size:12.5px; cursor:pointer;
+  transition:color .12s ease, border-color .12s ease;
+}
+.ghost-btn:hover:not(:disabled){ color:var(--ink); border-color:var(--ink-faint); }
+.ghost-btn:disabled{ opacity:.4; cursor:default; }
+
+/* ============================================================
+   Rows
+   ============================================================ */
+.due-row .txt .name{ min-width:0; }
+.due-row.row-done .name{ text-decoration:line-through; color:var(--ink-faint); }
+.task-row .t-text{ display:flex; align-items:center; }
+.aq-row .right{ gap:6px; }
+
+.editor-name{ flex:1 1 120px; min-width:100px; font-size:12.5px; color:var(--ink); }
+.editor-hint{ font-size:11px; color:var(--ink-faint); white-space:nowrap; }
+
+/* ============================================================
+   Manage sub-sections
+   ============================================================ */
+.subtabs{ display:flex; gap:4px; flex-wrap:wrap; margin-bottom:10px; }
+.subtabs button{
+  background:var(--panel); border:1px solid var(--line); color:var(--ink-soft);
+  padding:7px 13px; border-radius:20px; font-family:inherit; font-size:12.5px; font-weight:600; cursor:pointer;
+  transition:color .12s ease, border-color .12s ease, background .12s ease;
+}
+.subtabs button:hover{ color:var(--ink); }
+.subtabs button.active{ background:var(--accent); border-color:var(--accent); color:var(--paper); }
+.section-blurb{ color:var(--ink-faint); font-size:12px; margin:0 0 16px; }
+
+.switch-row{ display:flex; gap:10px; align-items:flex-start; padding:9px 0; border-bottom:1px solid var(--line); }
+.switch-row:last-of-type{ border-bottom:none; }
+.switch-row input[type=checkbox]{ margin-top:2px; width:16px; height:16px; accent-color:var(--accent); flex:none; }
+.switch-row span{ display:flex; flex-direction:column; gap:2px; }
+.switch-row strong{ font-size:12.5px; font-weight:600; color:var(--ink); }
+.switch-row em{ font-style:normal; font-size:11.5px; color:var(--ink-faint); }
+
+.color-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:4px 14px; }
+.color-field{ display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--line); }
+.color-field:last-of-type{ border-bottom:none; }
+.color-field input[type=color]{ width:32px; height:28px; padding:0; border:1px solid var(--line); border-radius:7px; background:none; cursor:pointer; flex:none; }
+.color-field-text{ display:flex; flex-direction:column; gap:1px; min-width:0; }
+.color-field-name{ font-size:12.5px; color:var(--ink); }
+.color-field-hint{ font-size:11px; color:var(--ink-faint); }
+
+.preset-row{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+.preset{
+  display:flex; align-items:center; gap:8px; background:var(--panel-raised); border:1px solid var(--line);
+  color:var(--ink-soft); border-radius:9px; padding:7px 12px 7px 8px; font-family:inherit; font-size:12px;
+  cursor:pointer; transition:color .12s ease, border-color .12s ease;
+}
+.preset:hover{ color:var(--ink); border-color:var(--ink-faint); }
+.preset-chips{ display:flex; gap:2px; }
+.preset-chips span{ width:11px; height:16px; border-radius:3px; border:1px solid rgba(0,0,0,0.25); }
+
+.label-row{ display:flex; gap:10px; align-items:center; padding:7px 0; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+.label-row:last-of-type{ border-bottom:none; }
+.label-row-default{ flex:0 0 190px; display:flex; flex-direction:column; gap:1px; font-size:12.5px; color:var(--ink-soft); }
+.label-row-default em{ font-style:normal; font-size:11px; color:var(--ink-faint); }
+.label-row input[type=text]{
+  flex:1 1 160px; min-width:140px; padding:6px 9px; border:1px solid var(--line);
+  background:var(--panel-raised); color:var(--ink); border-radius:6px; font-family:inherit; font-size:12.5px;
+}
+
+.slider-row{ display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+.slider-row:last-of-type{ border-bottom:none; }
+.slider-name{ flex:0 0 190px; font-size:12.5px; color:var(--ink); }
+.slider-row input[type=range]{ flex:1 1 140px; accent-color:var(--accent); }
+.slider-value{ font-size:11.5px; color:var(--ink-soft); width:56px; text-align:right; }
+
+/* ============================================================
+   Compact density
+   ============================================================ */
+.density-compact{ font-size:13.5px; }
+.density-compact .due-row{ padding:7px 12px; }
+.density-compact .task-row{ padding:5px 0; }
+.density-compact .aq-row{ padding:9px 11px; margin:0 12px 7px; }
+.density-compact .panel h2{ padding:9px 12px; }
+.density-compact .manage-block{ padding:11px; }
+.density-compact .proj-head{ padding:10px 12px; }
+.density-compact .proj-card{ margin-bottom:9px; }
+.density-compact .stat{ padding:7px 11px; }
+.density-compact .editor-row{ padding:6px 0; }

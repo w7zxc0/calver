@@ -2,22 +2,21 @@
 
 import { getMember, workloadRows } from '@/lib/selectors';
 import { useApp } from '@/components/AppProvider';
+import { PanelHeader } from '@/components/ui/PanelHeader';
 
 export function WorkloadPanel() {
-  const { state } = useApp();
+  const { state, label } = useApp();
   const rows = workloadRows(state);
   const max = rows[0]?.count || 1;
 
   return (
     <div className="panel">
-      <h2>
-        Workload <span className="count">{rows.length}</span>
-      </h2>
+      <PanelHeader labelKey="panel.workload" count={rows.length} hideKey="panel.workload" />
       {rows.length === 0 ? (
         <div className="empty">No assignments yet.</div>
       ) : (
         rows.map((r) => {
-          const m = getMember(state, r.id);
+          const m = getMember(state, r.id, label('term.myself'));
           const color = m && m.color ? m.color : 'var(--accent)';
           return (
             <div className="wl-row" key={r.id}>

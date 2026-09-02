@@ -2,11 +2,12 @@
 
 import { useRef } from 'react';
 import { todayISO } from '@/lib/date';
-import { migrate } from '@/lib/seed';
+import { freshState, migrate } from '@/lib/seed';
 import { useApp } from '@/components/AppProvider';
+import { ManageBlock } from './ManageBlock';
 
 export function BackupBlock() {
-  const { state, replaceState } = useApp();
+  const { state, replaceState, update } = useApp();
   const fileInput = useRef<HTMLInputElement>(null);
 
   const exportData = () => {
@@ -21,11 +22,34 @@ export function BackupBlock() {
     URL.revokeObjectURL(url);
   };
 
+  const exportSettings = () => {
+    const payload = { prefs: state.prefs, uiColors: state.uiColors, statuses: state.statuses };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `calver-theme-${todayISO()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
   const importData = (file: File) => {
     const reader = new FileReader();
     reader.onload = () => {
       try {
-        replaceState(migrate(JSON.parse(String(reader.result))));
+        const parsed = JSON.parse(String(reader.result));
+        // A settings-only file carries prefs but no projects.
+        if (parsed && parsed.prefs && !parsed.projects) {
+          update((draft) => {
+            draft.prefs = migrate({ ...draft, prefs: parsed.prefs }).prefs;
+            if (parsed.uiColors) draft.uiColors = parsed.uiColors;
+          });
+          window.alert('Settings imported.');
+          return;
+        }
+        replaceState(migrate(parsed));
         window.alert('Data imported.');
       } catch {
         window.alert('Could not read that file. Make sure it is a Calver export.');
@@ -35,15 +59,25 @@ export function BackupBlock() {
   };
 
   return (
-    <div className="manage-block">
-      <h2>Backup</h2>
-      <div className="manage-note" style={{ marginTop: 0 }}>
-        Export a copy of everything, or restore from a file you saved earlier.
-      </div>
+    <ManageBlock
+      labelKey="block.backup"
+      extraItems={[
+        {
+          label: 'Start over with sample data',
+          danger: true,
+          onSelect: () => {
+            if (!window.confirm('Replace everything with a fresh starter board?')) return;
+            replaceState(freshState());
+          },
+        },
+      ]}
+      note="Export a copy of everything, share just your theme and wording, or restore from a file you saved earlier."
+    >
       <div className="add-row">
-        <button className="btn" type="button" onClick={exportData}>Export data</button>
+        <button className="btn" type="button" onClick={exportData}>Export everything</button>
+        <button className="btn" type="button" onClick={exportSettings}>Export theme only</button>
         <button className="btn" type="button" onClick={() => fileInput.current?.click()}>
-          Import data
+          Import file
         </button>
         <input
           ref={fileInput}
@@ -57,6 +91,6 @@ export function BackupBlock() {
           }}
         />
       </div>
-    </div>
+    </ManageBlock>
   );
 }
