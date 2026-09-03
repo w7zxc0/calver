@@ -65,15 +65,18 @@ CREATE TABLE IF NOT EXISTS projects (
 );
 
 -- A NULL project_id marks a general task, i.e. one not attached to a project.
+-- A non-NULL parent_task_id marks a subtask of the task it names.
 CREATE TABLE IF NOT EXISTS tasks (
-  workspace_id text NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-  id           text NOT NULL,
-  project_id   text,
-  title        text NOT NULL,
-  done         boolean NOT NULL DEFAULT false,
-  due          date,
-  assignee     text NOT NULL DEFAULT '',
-  position     integer NOT NULL,
+  workspace_id   text NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  id             text NOT NULL,
+  project_id     text,
+  parent_task_id text,
+  title          text NOT NULL,
+  done           boolean NOT NULL DEFAULT false,
+  due            date,
+  assignee       text NOT NULL DEFAULT '',
+  low_volume     boolean NOT NULL DEFAULT false,
+  position       integer NOT NULL,
   PRIMARY KEY (workspace_id, id),
   FOREIGN KEY (workspace_id, project_id) REFERENCES projects(workspace_id, id) ON DELETE CASCADE
 );
@@ -107,6 +110,9 @@ CREATE INDEX IF NOT EXISTS tasks_by_project ON tasks (workspace_id, project_id);
 -- Columns added after the first release; safe to run against an existing database.
 ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS preferences jsonb NOT NULL DEFAULT '{}'::jsonb;
 ALTER TABLE projects   ADD COLUMN IF NOT EXISTS color text NOT NULL DEFAULT '';
+ALTER TABLE tasks      ADD COLUMN IF NOT EXISTS parent_task_id text;
+ALTER TABLE tasks      ADD COLUMN IF NOT EXISTS low_volume boolean NOT NULL DEFAULT false;
+CREATE INDEX IF NOT EXISTS tasks_by_parent ON tasks (workspace_id, parent_task_id);
 `;
 
 let ready: Promise<void> | null = null;

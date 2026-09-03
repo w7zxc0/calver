@@ -36,3 +36,22 @@ export function hexA(hex: string | null | undefined, alpha: number): string {
 export function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
+
+/** A task record with every field present, so callers never miss a new one. */
+export function newTask(fields: {
+  text: string;
+  due?: string | null;
+  assignee?: string;
+  done?: boolean;
+  lowVolume?: boolean;
+}) {
+  return {
+    id: uid(),
+    text: fields.text,
+    done: fields.done ?? false,
+    due: fields.due ?? null,
+    assignee: fields.assignee ?? '',
+    lowVolume: fields.lowVolume ?? false,
+    subtasks: [],
+  };
+}

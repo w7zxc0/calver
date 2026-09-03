@@ -5,15 +5,15 @@ import { useApp } from '@/components/AppProvider';
 import { ManageBlock } from './ManageBlock';
 
 const SPLIT_ROWS: { id: string; name: string }[] = [
-  { id: SPLITS.dashTop, name: 'Dashboard — top row' },
-  { id: SPLITS.dashBottom, name: 'Dashboard — bottom row' },
+  { id: SPLITS.dashTop, name: 'Dashboard — Due / Follow Up' },
+  { id: SPLITS.dashMiddle, name: 'Dashboard — Low Volume / Workload' },
   { id: SPLITS.managePeople, name: 'Manage — People' },
   { id: SPLITS.manageWorkflow, name: 'Manage — Workflow' },
   { id: SPLITS.manageData, name: 'Manage — Data' },
 ];
 
 export function LayoutBlock() {
-  const { prefs, label, isHidden, toggleHidden, update } = useApp();
+  const { prefs, label, isHidden, toggleHidden, setPref, update } = useApp();
 
   const groups = Array.from(new Set(TOGGLEABLE_PARTS.map((p) => p.where)));
 
@@ -48,6 +48,56 @@ export function LayoutBlock() {
           </div>
         ))}
       </ManageBlock>
+
+      <div className="manage-block">
+        <h2><span className="panel-title">{label('tab.projects')} view</span></h2>
+        <div className="preset-row">
+          {(['kanban', 'list'] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              className={`preset${prefs.projectsView === mode ? ' preset-on' : ''}`}
+              onClick={() => setPref('projectsView', mode)}
+            >
+              {mode === 'kanban' ? 'Kanban rows' : 'Plain list'}
+            </button>
+          ))}
+        </div>
+        <div className="slider-row">
+          <span className="slider-name">Cards per row</span>
+          <input
+            type="range"
+            min={1}
+            max={4}
+            value={prefs.kanbanColumns}
+            disabled={prefs.projectsView !== 'kanban'}
+            onChange={(e) => setPref('kanbanColumns', Number(e.target.value))}
+          />
+          <span className="slider-value mono">{prefs.kanbanColumns}</span>
+        </div>
+        <label className="switch-row">
+          <input
+            type="checkbox"
+            checked={prefs.showCompletedTasks}
+            onChange={(e) => setPref('showCompletedTasks', e.target.checked)}
+          />
+          <span>
+            <strong>Show completed tasks</strong>
+            <em>Off by default; finished work stays folded away on each card</em>
+          </span>
+        </label>
+        <label className="switch-row">
+          <input
+            type="checkbox"
+            checked={prefs.showSubtasksOnDashboard}
+            onChange={(e) => setPref('showSubtasksOnDashboard', e.target.checked)}
+          />
+          <span>
+            <strong>List {label('term.subtask').toLowerCase()}s on the {label('tab.dashboard').toLowerCase()}</strong>
+            <em>Subtasks appear in the task windows the same way tasks do</em>
+          </span>
+        </label>
+      </div>
 
       <div className="manage-block">
         <h2><span className="panel-title">Window widths</span></h2>

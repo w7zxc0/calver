@@ -1,6 +1,6 @@
 'use client';
 
-import { getStatus } from '@/lib/selectors';
+import { getStatus, projectProgress } from '@/lib/selectors';
 import { hexA } from '@/lib/utils';
 import { useApp } from '@/components/AppProvider';
 import { PanelHeader } from '@/components/ui/PanelHeader';
@@ -20,9 +20,7 @@ export function ProjectsOverviewPanel() {
       ) : (
         state.projects.map((p) => {
           const st = getStatus(state, p.status);
-          const total = p.tasks.length;
-          const done = p.tasks.filter((t) => t.done).length;
-          const pct = total ? Math.round((done / total) * 100) : 0;
+          const { total, done, pct } = projectProgress(p);
           const barColor = p.color || (st ? st.color : '#8B909B');
           return (
             <div className="po-row" key={p.id}>

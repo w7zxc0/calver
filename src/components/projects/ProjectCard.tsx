@@ -3,35 +3,41 @@
 import { useState } from 'react';
 import { fmtDate, daysUntil, resolveQuickDate } from '@/lib/date';
 import { trashPush } from '@/lib/mutations';
-import { getStatus } from '@/lib/selectors';
+import { getStatus, projectProgress, subtasksOf } from '@/lib/selectors';
 import type { Project, Task } from '@/lib/types';
-import { hexA, randomHex, uid } from '@/lib/utils';
+import { clone, hexA, newTask, randomHex, uid } from '@/lib/utils';
 import { useApp } from '@/components/AppProvider';
-import { DueField } from '@/components/ui/DueField';
 import { EditableText } from '@/components/ui/EditableText';
 import { OverflowMenu } from '@/components/ui/OverflowMenu';
 import { MemberSelect, QuickDateSelect, StatusSelect } from '@/components/ui/Selects';
+import { TASK_DRAG_TYPE, TaskRow } from './TaskRow';
 
 interface Props {
   project: Project;
   /** Called when a task dragged from another project is dropped on this card. */
   onDropTask: (sourceProjectId: string, taskId: string, destProjectId: string) => void;
+  /** Kanban cards sit in a status band and lose their own status picker. */
+  compact?: boolean;
 }
 
-export function ProjectCard({ project: p, onDropTask }: Props) {
+export function ProjectCard({ project: p, onDropTask, compact = false }: Props) {
   const { state, prefs, update, label } = useApp();
   const [dragOver, setDragOver] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [editingNotes, setEditingNotes] = useState(Boolean(p.notes));
 
   const st = getStatus(state, p.status);
-  const openTasks = p.tasks.filter((t) => !t.done).length;
+  const progress = projectProgress(p);
+  const openTasks = progress.total - progress.done;
   const nextDue = p.tasks
     .filter((t) => !t.done && t.due)
     .sort((a, b) => (daysUntil(a.due) as number) - (daysUntil(b.due) as number))[0];
   const accent = p.color || (st ? st.color : 'var(--ink-faint)');
 
-  /** Edits to a project always leave it expanded, as in the original. */
+  const visibleTasks = prefs.showCompletedTasks ? p.tasks : p.tasks.filter((t) => !t.done);
+  const hiddenTasks = p.tasks.length - visibleTasks.length;
+
+  /** Edits to a project always leave it expanded. */
   const editProject = (fn: (proj: Project) => void) =>
     update((draft) => {
       const proj = draft.projects.find((x) => x.id === p.id);
@@ -60,13 +66,12 @@ export function ProjectCard({ project: p, onDropTask }: Props) {
     update((draft) => {
       const index = draft.projects.findIndex((x) => x.id === p.id);
       if (index < 0) return;
-      const copy: Project = {
-        ...JSON.parse(JSON.stringify(draft.projects[index])),
+      const copy: Project = { ...clone(draft.projects[index]), id: uid(), name: `${p.name} copy`, open: true };
+      copy.tasks = copy.tasks.map((t) => ({
+        ...t,
         id: uid(),
-        name: `${p.name} copy`,
-        open: true,
-      };
-      copy.tasks = copy.tasks.map((t) => ({ ...t, id: uid() }));
+        subtasks: subtasksOf(t).map((sub) => ({ ...sub, id: uid() })),
+      }));
       draft.projects.splice(index + 1, 0, copy);
     });
 
@@ -92,6 +97,7 @@ export function ProjectCard({ project: p, onDropTask }: Props) {
     <div
       className={[
         'proj-card',
+        compact ? 'proj-card-compact' : '',
         st?.terminal ? 'tint-done' : '',
         dragOver ? 'drag-over' : '',
         prefs.projectStripes ? 'striped' : '',
@@ -99,6 +105,8 @@ export function ProjectCard({ project: p, onDropTask }: Props) {
       ].filter(Boolean).join(' ')}
       style={{ '--proj-accent': accent } as React.CSSProperties}
       onDragOver={(e) => {
+        // Only task drags land on a card; project drags belong to the band.
+        if (!e.dataTransfer.types.includes(TASK_DRAG_TYPE)) return;
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
         setDragOver(true);
@@ -107,10 +115,11 @@ export function ProjectCard({ project: p, onDropTask }: Props) {
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragOver(false);
       }}
       onDrop={(e) => {
+        const data = e.dataTransfer.getData(TASK_DRAG_TYPE);
+        if (!data) return;
         e.preventDefault();
+        e.stopPropagation();
         setDragOver(false);
-        const data = e.dataTransfer.getData('text/plain');
-        if (!data || !data.includes(':')) return;
         const [srcPid, tid] = data.split(':');
         onDropTask(srcPid, tid, p.id);
       }}
@@ -135,15 +144,17 @@ export function ProjectCard({ project: p, onDropTask }: Props) {
           </div>
         </div>
         <div className="proj-actions" onClick={(e) => e.stopPropagation()}>
-          <StatusSelect
-            className="status-select"
-            style={{
-              background: st ? hexA(st.color, 0.16) : 'transparent',
-              color: st ? st.color : 'var(--ink)',
-            }}
-            value={p.status}
-            onChange={(v) => editProject((proj) => { proj.status = v; })}
-          />
+          {!compact && (
+            <StatusSelect
+              className="status-select"
+              style={{
+                background: st ? hexA(st.color, 0.16) : 'transparent',
+                color: st ? st.color : 'var(--ink)',
+              }}
+              value={p.status}
+              onChange={(v) => editProject((proj) => { proj.status = v; })}
+            />
+          )}
           <OverflowMenu
             title={`${label('term.project')} options`}
             header={
@@ -164,10 +175,16 @@ export function ProjectCard({ project: p, onDropTask }: Props) {
               { label: 'Random colour', onSelect: () => editProject((proj) => { proj.color = randomHex(); }) },
               { label: editingNotes ? 'Hide notes' : 'Add notes', onSelect: () => setEditingNotes((v) => !v) },
               'separator',
+              ...state.statuses.map((s) => ({
+                label: `Move to ${s.name}`,
+                checked: s.id === p.status,
+                onSelect: () => editProject((proj) => { proj.status = s.id; }),
+              })),
+              'separator' as const,
               { label: 'Duplicate', onSelect: duplicateProject },
               { label: 'Move up', onSelect: () => moveProject(-1) },
               { label: 'Move down', onSelect: () => moveProject(1) },
-              'separator',
+              'separator' as const,
               { label: 'Move to trash', onSelect: removeProject, danger: true },
             ]}
           />
@@ -175,11 +192,12 @@ export function ProjectCard({ project: p, onDropTask }: Props) {
       </div>
 
       <div className={`proj-body${p.open ? ' open' : ''}`}>
-        {p.tasks.map((t) => (
+        {visibleTasks.map((t) => (
           <TaskRow
             key={t.id}
-            projectId={p.id}
+            taskRef={`p:${p.id}:${t.id}`}
             task={t}
+            dragId={`${p.id}:${t.id}`}
             onEdit={(fn) =>
               editProject((proj) => {
                 const target = proj.tasks.find((x) => x.id === t.id);
@@ -187,8 +205,27 @@ export function ProjectCard({ project: p, onDropTask }: Props) {
               })
             }
             onRemove={() => removeTask(t.id)}
+            onAddSubtask={(sub) =>
+              editProject((proj) => {
+                const target = proj.tasks.find((x) => x.id === t.id);
+                if (target) target.subtasks = [...subtasksOf(target), sub];
+              })
+            }
           />
         ))}
+
+        {visibleTasks.length === 0 && (
+          <div className="proj-empty">
+            No open {label('term.task').toLowerCase()}s.
+          </div>
+        )}
+
+        {hiddenTasks > 0 && (
+          <div className="subtask-hidden-note">
+            {hiddenTasks} completed {label('term.task').toLowerCase()}
+            {hiddenTasks === 1 ? '' : 's'} hidden
+          </div>
+        )}
 
         <AddTaskRow onAdd={(task) => editProject((proj) => { proj.tasks.push(task); })} />
 
@@ -211,73 +248,6 @@ export function ProjectCard({ project: p, onDropTask }: Props) {
   );
 }
 
-function TaskRow({
-  projectId, task, onEdit, onRemove,
-}: {
-  projectId: string;
-  task: Task;
-  onEdit: (fn: (t: Task) => void) => void;
-  onRemove: () => void;
-}) {
-  const { label } = useApp();
-  const [dragging, setDragging] = useState(false);
-  const [renaming, setRenaming] = useState(false);
-
-  return (
-    <div
-      className={`task-row${task.done ? ' done' : ''}${dragging ? ' dragging' : ''}`}
-      draggable
-      onDragStart={(e) => {
-        e.dataTransfer.setData('text/plain', `${projectId}:${task.id}`);
-        e.dataTransfer.effectAllowed = 'move';
-        setDragging(true);
-      }}
-      onDragEnd={() => setDragging(false)}
-    >
-      <span className="drag-handle" title="Drag to move to another project">⠿</span>
-      <input
-        type="checkbox"
-        draggable={false}
-        checked={task.done}
-        onChange={(e) => {
-          const done = e.target.checked;
-          onEdit((t) => { t.done = done; });
-        }}
-      />
-      <div className="t-text">
-        <EditableText
-          value={task.text}
-          onCommit={(next) => onEdit((t) => { t.text = next; })}
-          editing={renaming}
-          onEditingChange={setRenaming}
-        />
-      </div>
-      <MemberSelect
-        draggable={false}
-        value={task.assignee}
-        onChange={(v) => onEdit((t) => { t.assignee = v; })}
-      />
-      <div className="t-due-wrap" draggable={false}>
-        <DueField taskRef={`p:${projectId}:${task.id}`} due={task.due} />
-      </div>
-      <OverflowMenu
-        title={`${label('term.task')} options`}
-        items={[
-          { label: 'Rename', onSelect: () => setRenaming(true) },
-          {
-            label: task.done ? 'Mark as not done' : 'Mark as done',
-            onSelect: () => onEdit((t) => { t.done = !t.done; }),
-          },
-          { label: 'Clear due date', onSelect: () => onEdit((t) => { t.due = null; }), disabled: !task.due },
-          { label: 'Unassign', onSelect: () => onEdit((t) => { t.assignee = ''; }), disabled: !task.assignee },
-          'separator',
-          { label: 'Move to trash', onSelect: onRemove, danger: true },
-        ]}
-      />
-    </div>
-  );
-}
-
 function AddTaskRow({ onAdd }: { onAdd: (task: Task) => void }) {
   const { label } = useApp();
   const [text, setText] = useState('');
@@ -288,7 +258,7 @@ function AddTaskRow({ onAdd }: { onAdd: (task: Task) => void }) {
   const add = () => {
     const trimmed = text.trim();
     if (trimmed === '') return;
-    onAdd({ id: uid(), text: trimmed, done: false, due: due || null, assignee });
+    onAdd(newTask({ text: trimmed, due: due || null, assignee }));
     setText('');
     setQuick('');
     setDue('');

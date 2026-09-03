@@ -33,6 +33,10 @@ export interface Task {
   done: boolean;
   due: string | null;
   assignee: AssigneeId;
+  /** Tagged as small, routine work; collected in its own dashboard window. */
+  lowVolume: boolean;
+  /** One level deep only: project -> task -> subtask. */
+  subtasks: Task[];
 }
 
 export interface Project {
@@ -100,6 +104,15 @@ export interface Preferences {
   showTasksWithoutDue: boolean;
   /** Whether completed tasks stay visible in the due window. */
   showCompletedInDue: boolean;
+  /** Whether low-volume tasks also appear in the due window. */
+  showLowVolumeInDue: boolean;
+  /** Completed tasks are folded away on project cards until asked for. */
+  showCompletedTasks: boolean;
+  /** Subtasks are listed on the dashboard alongside their parents. */
+  showSubtasksOnDashboard: boolean;
+  projectsView: 'kanban' | 'list';
+  /** Project cards per row in the kanban view. */
+  kanbanColumns: number;
   /** Show the coloured stripe that separates one project card from the next. */
   projectStripes: boolean;
 }
@@ -126,6 +139,9 @@ export interface FlatTask {
   assignee: AssigneeId;
   projectName: string | null;
   projectColor: string | null;
+  lowVolume: boolean;
+  /** Set on subtasks, naming the task they sit under. */
+  parentText: string | null;
 }
 
 export type ViewId = 'dashboard' | 'projects' | 'manage';

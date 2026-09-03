@@ -25,6 +25,7 @@ export const LABEL_GROUPS: { group: string; keys: { key: string; text: string; h
       { key: 'panel.followUp', text: 'Follow Up' },
       { key: 'panel.workload', text: 'Workload' },
       { key: 'panel.projects', text: 'Projects Overview' },
+      { key: 'panel.lowVolume', text: 'Low Volume' },
     ],
   },
   {
@@ -35,6 +36,8 @@ export const LABEL_GROUPS: { group: string; keys: { key: string; text: string; h
       { key: 'term.general', text: 'General', hint: 'Tasks with no project' },
       { key: 'term.project', text: 'Project' },
       { key: 'term.task', text: 'Task' },
+      { key: 'term.subtask', text: 'Subtask' },
+      { key: 'term.lowVolume', text: 'Low volume' },
       { key: 'term.member', text: 'Team member' },
       { key: 'term.department', text: 'Department' },
       { key: 'term.status', text: 'Status' },
@@ -49,6 +52,7 @@ export const LABEL_GROUPS: { group: string; keys: { key: string; text: string; h
       { key: 'action.addProject', text: 'Add project' },
       { key: 'action.addFollowUp', text: 'Add follow-up' },
       { key: 'placeholder.newTask', text: 'New task' },
+      { key: 'placeholder.newSubtask', text: 'New subtask' },
       { key: 'placeholder.newProject', text: 'New project name' },
       { key: 'placeholder.newFollowUp', text: 'New follow-up question' },
       { key: 'placeholder.searchProjects', text: 'Search projects…' },
@@ -93,12 +97,13 @@ export const TOGGLEABLE_PARTS: { key: string; labelKey: string; where: string }[
   { key: 'panel.followUp', labelKey: 'panel.followUp', where: 'Dashboard windows' },
   { key: 'panel.workload', labelKey: 'panel.workload', where: 'Dashboard windows' },
   { key: 'panel.projects', labelKey: 'panel.projects', where: 'Dashboard windows' },
+  { key: 'panel.lowVolume', labelKey: 'panel.lowVolume', where: 'Dashboard windows' },
 ];
 
 /** Split ids, used for the draggable dividers between side-by-side windows. */
 export const SPLITS = {
   dashTop: 'dash.top',
-  dashBottom: 'dash.bottom',
+  dashMiddle: 'dash.middle',
   managePeople: 'manage.people',
   manageWorkflow: 'manage.workflow',
   manageData: 'manage.data',

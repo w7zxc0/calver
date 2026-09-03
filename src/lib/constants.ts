@@ -18,8 +18,9 @@ export const WEEKDAYS: { label: string; dow: number }[] = [
 export const SEED_COUNTS = {
   departments: 3,
   membersPerDepartment: 3,
-  projects: 3,
+  projects: 6,
   tasksPerProject: 3,
+  subtasksPerTask: 2,
   recipients: 2,
   followUps: 2,
 };
@@ -85,6 +86,11 @@ export const DEFAULT_PREFERENCES: Preferences = {
   density: 'comfortable',
   showTasksWithoutDue: false,
   showCompletedInDue: false,
+  showLowVolumeInDue: false,
+  showCompletedTasks: false,
+  showSubtasksOnDashboard: true,
+  projectsView: 'kanban',
+  kanbanColumns: 3,
   projectStripes: true,
 };
 

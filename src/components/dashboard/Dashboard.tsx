@@ -5,6 +5,7 @@ import { useApp } from '@/components/AppProvider';
 import { SplitPane } from '@/components/ui/SplitPane';
 import { DuePanel } from './DuePanel';
 import { FollowUpPanel } from './FollowUpPanel';
+import { LowVolumePanel } from './LowVolumePanel';
 import { ProjectsOverviewPanel } from './ProjectsOverviewPanel';
 import { StatsBar } from './StatsBar';
 import { WorkloadPanel } from './WorkloadPanel';
@@ -23,12 +24,17 @@ export function Dashboard() {
         soloRight={isHidden('panel.due')}
       />
       <SplitPane
-        splitId={SPLITS.dashBottom}
-        left={<WorkloadPanel />}
-        right={<ProjectsOverviewPanel />}
-        soloLeft={isHidden('panel.projects')}
-        soloRight={isHidden('panel.workload')}
+        splitId={SPLITS.dashMiddle}
+        left={<LowVolumePanel />}
+        right={<WorkloadPanel />}
+        soloLeft={isHidden('panel.workload')}
+        soloRight={isHidden('panel.lowVolume')}
       />
+      {!isHidden('panel.projects') && (
+        <div className="split-solo">
+          <ProjectsOverviewPanel />
+        </div>
+      )}
     </>
   );
 }

@@ -23,7 +23,8 @@ interface ProjectRow {
   color: string; is_open: boolean;
 }
 interface TaskRow {
-  id: string; project_id: string | null; title: string; done: boolean; due: string | null; assignee: string;
+  id: string; project_id: string | null; parent_task_id: string | null; title: string;
+  done: boolean; due: string | null; assignee: string; low_volume: boolean;
 }
 interface FollowUpRow {
   id: string; question: string; project_name: string; status: string; answer: string;
@@ -51,25 +52,42 @@ export async function loadState(workspaceId = DEFAULT_WORKSPACE): Promise<AppSta
     pool.query<StatusRow>('SELECT id, name, color, terminal FROM statuses WHERE workspace_id = $1 ORDER BY position', args),
     pool.query<RecipientRow>('SELECT id, name FROM recipients WHERE workspace_id = $1 ORDER BY position', args),
     pool.query<ProjectRow>('SELECT id, name, owner, status_id, notes, color, is_open FROM projects WHERE workspace_id = $1 ORDER BY position', args),
-    pool.query<TaskRow>('SELECT id, project_id, title, done, due, assignee FROM tasks WHERE workspace_id = $1 ORDER BY position', args),
+    pool.query<TaskRow>('SELECT id, project_id, parent_task_id, title, done, due, assignee, low_volume FROM tasks WHERE workspace_id = $1 ORDER BY position', args),
     pool.query<FollowUpRow>('SELECT id, question, project_name, status, answer, recipient_id, added FROM follow_ups WHERE workspace_id = $1 ORDER BY position', args),
     pool.query<TrashRow>('SELECT id, kind, payload, extra, deleted_at FROM trash WHERE workspace_id = $1 ORDER BY position', args),
   ]);
 
   const toTask = (r: TaskRow): Task => ({
-    id: r.id, text: r.title, done: r.done, due: r.due, assignee: r.assignee,
+    id: r.id,
+    text: r.title,
+    done: r.done,
+    due: r.due,
+    assignee: r.assignee,
+    lowVolume: r.low_volume,
+    subtasks: [],
   });
+
+  // Two passes: build every task first, then hang subtasks off their parent.
+  const byId = new Map<string, Task>();
+  tasks.rows.forEach((r) => byId.set(r.id, toTask(r)));
 
   const tasksByProject = new Map<string, Task[]>();
   const generalTasks: Task[] = [];
   tasks.rows.forEach((r) => {
+    const task = byId.get(r.id);
+    if (!task) return;
+
+    if (r.parent_task_id) {
+      byId.get(r.parent_task_id)?.subtasks.push(task);
+      return;
+    }
     if (r.project_id === null) {
-      generalTasks.push(toTask(r));
+      generalTasks.push(task);
       return;
     }
     const list = tasksByProject.get(r.project_id);
-    if (list) list.push(toTask(r));
-    else tasksByProject.set(r.project_id, [toTask(r)]);
+    if (list) list.push(task);
+    else tasksByProject.set(r.project_id, [task]);
   });
 
   return {
@@ -163,17 +181,23 @@ export async function saveState(state: AppState, workspaceId = DEFAULT_WORKSPACE
         workspaceId, p.id, p.name, p.owner || '', p.status || null, p.notes || '', p.color || '', !!p.open, i,
       ]));
 
+    // Parents are written before their subtasks so the rows read back in order.
     const taskRows: unknown[][] = [];
-    state.projects.forEach((p) => {
-      p.tasks.forEach((t, i) => {
-        taskRows.push([workspaceId, t.id, p.id, t.text, !!t.done, t.due || null, t.assignee || '', i]);
+    const pushTask = (t: Task, projectId: string | null, parentId: string | null, i: number) => {
+      taskRows.push([
+        workspaceId, t.id, projectId, parentId, t.text, !!t.done, t.due || null,
+        t.assignee || '', !!t.lowVolume, i,
+      ]);
+      (Array.isArray(t.subtasks) ? t.subtasks : []).forEach((sub, subIndex) => {
+        pushTask(sub, projectId, t.id, subIndex);
       });
-    });
-    state.generalTasks.forEach((t, i) => {
-      taskRows.push([workspaceId, t.id, null, t.text, !!t.done, t.due || null, t.assignee || '', i]);
-    });
+    };
+    state.projects.forEach((p) => p.tasks.forEach((t, i) => pushTask(t, p.id, null, i)));
+    state.generalTasks.forEach((t, i) => pushTask(t, null, null, i));
+
     await insertRows(client, 'tasks',
-      ['workspace_id', 'id', 'project_id', 'title', 'done', 'due', 'assignee', 'position'], taskRows);
+      ['workspace_id', 'id', 'project_id', 'parent_task_id', 'title', 'done', 'due', 'assignee', 'low_volume', 'position'],
+      taskRows);
 
     await insertRows(client, 'follow_ups',
       ['workspace_id', 'id', 'question', 'project_name', 'status', 'answer', 'recipient_id', 'added', 'position'],

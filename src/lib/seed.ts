@@ -49,6 +49,16 @@ export function freshState(): AppState {
       // A spread of states so every part of the board has something to show.
       due: t === 0 ? plus(2 + p) : t === 1 ? plus(9 + p) : null,
       assignee: t === 0 ? members[p % members.length].id : t === 2 ? ME_ID : '',
+      lowVolume: t === 2,
+      subtasks: Array.from({ length: SEED_COUNTS.subtasksPerTask }, (_, sub): Task => ({
+        id: uid(),
+        text: `Subtask ${sub + 1}`,
+        done: false,
+        due: null,
+        assignee: '',
+        lowVolume: false,
+        subtasks: [],
+      })),
     })),
   }));
 
@@ -93,8 +103,33 @@ function migratePreferences(input: unknown): Preferences {
     density: p.density === 'compact' ? 'compact' : 'comfortable',
     showTasksWithoutDue: p.showTasksWithoutDue === true,
     showCompletedInDue: p.showCompletedInDue === true,
+    showLowVolumeInDue: p.showLowVolumeInDue === true,
+    showCompletedTasks: p.showCompletedTasks === true,
+    showSubtasksOnDashboard: p.showSubtasksOnDashboard !== false,
+    projectsView: p.projectsView === 'list' ? 'list' : 'kanban',
+    kanbanColumns: clampColumns(p.kanbanColumns),
     projectStripes: p.projectStripes !== false,
   };
+}
+
+function clampColumns(value: unknown): number {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return DEFAULT_PREFERENCES.kanbanColumns;
+  return Math.min(4, Math.max(1, Math.round(n)));
+}
+
+/** Brings one task record up to date, subtasks included. */
+function migrateTask(t: Task, convertAssignee: (val: unknown) => string, depth = 0): void {
+  t.assignee = convertAssignee(t.assignee);
+  if (t.due === undefined) t.due = null;
+  t.lowVolume = t.lowVolume === true;
+  if (!Array.isArray(t.subtasks)) t.subtasks = [];
+  // Only one level of nesting is supported; anything deeper is flattened away.
+  if (depth >= 1) {
+    t.subtasks = [];
+    return;
+  }
+  t.subtasks.forEach((sub) => migrateTask(sub, convertAssignee, depth + 1));
 }
 
 export function migrate(input: unknown): AppState {
@@ -147,10 +182,7 @@ export function migrate(input: unknown): AppState {
     if (!p.color) p.color = projectColors[i % projectColors.length];
     if (p.owner === undefined) p.owner = '';
     if (p.notes === undefined) p.notes = '';
-    p.tasks.forEach((t) => {
-      t.assignee = convertAssignee(t.assignee);
-      if (t.due === undefined) t.due = null;
-    });
+    p.tasks.forEach((t) => migrateTask(t, convertAssignee));
     if (!p.status || !state.statuses.some((st) => st.id === p.status)) {
       const match = state.statuses.find(
         (st) => st.name.toLowerCase() === String(p.status || '').toLowerCase(),
@@ -158,7 +190,7 @@ export function migrate(input: unknown): AppState {
       p.status = match ? match.id : state.statuses[0].id;
     }
   });
-  state.generalTasks.forEach((t) => { t.assignee = convertAssignee(t.assignee); });
+  state.generalTasks.forEach((t) => migrateTask(t, convertAssignee));
 
   return state;
 }

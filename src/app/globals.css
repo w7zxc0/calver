@@ -408,3 +408,74 @@ textarea.inline-edit{ resize:vertical; line-height:1.4; }
 .density-compact .proj-card{ margin-bottom:9px; }
 .density-compact .stat{ padding:7px 11px; }
 .density-compact .editor-row{ padding:6px 0; }
+.density-compact .kanban-band{ padding:9px; }
+.density-compact .kanban-row{ gap:9px; }
+
+/* ============================================================
+   Kanban: one band per status, projects a few to a row
+   ============================================================ */
+.kanban{ display:flex; flex-direction:column; gap:14px; }
+.kanban-band{
+  border:1px solid var(--line); border-radius:12px; padding:12px;
+  background:linear-gradient(var(--panel), var(--panel));
+  border-left:3px solid var(--band-accent, var(--line));
+}
+.kanban-band.drag-over{ outline:2px dashed var(--band-accent, var(--accent)); outline-offset:-3px; }
+.kanban-band-head{ display:flex; align-items:center; gap:9px; margin-bottom:11px; }
+.kanban-band-name{
+  font-size:11.5px; text-transform:uppercase; letter-spacing:0.06em; font-weight:700;
+  display:flex; align-items:center; gap:7px;
+}
+.kanban-dot{ width:8px; height:8px; border-radius:50%; display:inline-block; }
+.kanban-add{ margin-left:auto; padding:5px 10px; font-size:11.5px; }
+.kanban-empty{
+  border:1px dashed var(--line); border-radius:9px; padding:14px;
+  color:var(--ink-faint); font-size:12.5px; text-align:center;
+}
+.kanban-row{
+  display:grid; gap:12px;
+  grid-template-columns:repeat(var(--kanban-cols, 3), minmax(0, 1fr));
+  align-items:start;
+}
+.kanban-cell{ min-width:0; cursor:grab; }
+.kanban-cell:active{ cursor:grabbing; }
+.kanban-cell.dragging{ opacity:.4; }
+.kanban-cell .proj-card{ margin-bottom:0; height:100%; }
+
+@media(max-width:1000px){ .kanban-row{ grid-template-columns:repeat(2, minmax(0, 1fr)); } }
+@media(max-width:680px){ .kanban-row{ grid-template-columns:1fr; } }
+
+/* Cards inside a band are tighter and lose their status picker. */
+.proj-card-compact .proj-head{ padding:11px 12px; }
+.proj-card-compact .proj-body{ padding:10px 12px 12px; }
+.proj-card-compact .proj-name{ font-size:14px; }
+.proj-card-compact .add-row input[type=text]{ flex:1 1 100%; }
+.proj-card-compact .task-row{ flex-wrap:wrap; }
+.proj-empty{ color:var(--ink-faint); font-size:12.5px; padding:6px 0; }
+
+/* ============================================================
+   Subtasks
+   ============================================================ */
+.subtask-row{ padding-left:20px; }
+.subtask-row .t-text{ font-size:13px; color:var(--ink-soft); }
+.subtask-tick{ color:var(--ink-faint); font-size:12px; flex:none; margin-right:2px; }
+.subtask-add{ padding-left:20px; margin-top:6px; }
+.subtask-hidden-note{
+  font-size:11px; color:var(--ink-faint); padding:4px 0 4px 20px;
+}
+.sub-count{
+  font-size:10.5px; color:var(--ink-faint); background:var(--slate-bg);
+  padding:1px 6px; border-radius:8px; margin-left:7px;
+}
+.due-row.is-subtask{ padding-left:22px; }
+.due-row .name{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+
+/* ============================================================
+   Low volume tag
+   ============================================================ */
+.lv-tag{
+  font-size:9.5px; text-transform:uppercase; letter-spacing:0.05em; font-weight:700;
+  color:var(--amber); background:var(--amber-bg); padding:2px 6px; border-radius:5px; white-space:nowrap;
+}
+.task-row.is-low-volume .t-text{ color:var(--ink-soft); }
+.preset-on{ border-color:var(--accent); color:var(--ink); }
