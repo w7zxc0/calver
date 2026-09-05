@@ -8,7 +8,6 @@ export const LABEL_GROUPS: { group: string; keys: { key: string; text: string; h
   {
     group: 'Application',
     keys: [
-      { key: 'app.title', text: 'Calver - Management', hint: 'Shown in the header' },
       { key: 'tab.dashboard', text: 'Dashboard' },
       { key: 'tab.projects', text: 'Projects' },
       { key: 'tab.manage', text: 'Manage' },
@@ -35,6 +34,8 @@ export const LABEL_GROUPS: { group: string; keys: { key: string; text: string; h
       { key: 'term.unassigned', text: 'Unassigned' },
       { key: 'term.general', text: 'General', hint: 'Tasks with no project' },
       { key: 'term.project', text: 'Project' },
+      { key: 'term.group', text: 'Group', hint: 'A band projects are filed under' },
+      { key: 'term.system', text: 'System', hint: 'One board with its own projects' },
       { key: 'term.task', text: 'Task' },
       { key: 'term.subtask', text: 'Subtask' },
       { key: 'term.lowVolume', text: 'Low volume' },
@@ -66,7 +67,11 @@ export const LABEL_GROUPS: { group: string; keys: { key: string; text: string; h
       { key: 'manage.appearance', text: 'Appearance' },
       { key: 'manage.labels', text: 'Labels' },
       { key: 'manage.layout', text: 'Layout' },
+      { key: 'manage.groups', text: 'Groups' },
+      { key: 'manage.sharing', text: 'Sharing' },
       { key: 'manage.data', text: 'Data' },
+      { key: 'block.groups', text: 'Project Groups' },
+      { key: 'block.sharing', text: 'People With Access' },
       { key: 'block.members', text: 'Team Members' },
       { key: 'block.departments', text: 'Departments' },
       { key: 'block.statuses', text: 'Project Statuses' },

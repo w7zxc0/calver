@@ -2,12 +2,15 @@
 
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import { labelOf } from '@/lib/labels';
-import type { AppState, Preferences } from '@/lib/types';
+import type { AppState, Preferences, SystemRole } from '@/lib/types';
 import { clone } from '@/lib/utils';
 
 interface AppContextValue {
   state: AppState;
   prefs: Preferences;
+  /** Which system this board belongs to, for the sharing screen. */
+  systemId: string;
+  role: SystemRole;
   /** Apply a mutation to a copy of the state and commit it. */
   update: (fn: (draft: AppState) => void) => void;
   /** Swap in a whole new state, used by the data import. */
@@ -37,10 +40,12 @@ export function useApp(): AppContextValue {
 interface Props {
   state: AppState;
   onChange: (next: AppState) => void;
+  systemId: string;
+  role: SystemRole;
   children: ReactNode;
 }
 
-export function AppProvider({ state, onChange, children }: Props) {
+export function AppProvider({ state, onChange, systemId, role, children }: Props) {
   const [editingDue, setEditingDue] = useState<Set<string>>(() => new Set());
 
   const update = useCallback(
@@ -97,6 +102,8 @@ export function AppProvider({ state, onChange, children }: Props) {
     () => ({
       state,
       prefs: state.prefs,
+      systemId,
+      role,
       update,
       replaceState: onChange,
       label,
@@ -108,7 +115,10 @@ export function AppProvider({ state, onChange, children }: Props) {
       isEditingDue,
       setDueEditing,
     }),
-    [state, update, onChange, label, setLabel, resetLabel, setPref, isHidden, toggleHidden, isEditingDue, setDueEditing],
+    [
+      state, systemId, role, update, onChange, label, setLabel, resetLabel, setPref,
+      isHidden, toggleHidden, isEditingDue, setDueEditing,
+    ],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

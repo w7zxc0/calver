@@ -1,6 +1,6 @@
 import { ME_ID } from './constants';
 import { daysUntil } from './date';
-import type { AppState, FlatTask, Member, Status, Task, TrashItem } from './types';
+import type { AppState, FlatTask, Group, Member, Status, Task, TrashItem } from './types';
 
 export function getMember(
   state: AppState,
@@ -53,6 +53,7 @@ export function allTasksFlat(state: AppState, includeSubtasks = true): FlatTask[
     ref: string,
     projectName: string | null,
     projectColor: string | null,
+    groupId: string | null,
     parentText: string | null,
   ) => {
     out.push({
@@ -64,25 +65,26 @@ export function allTasksFlat(state: AppState, includeSubtasks = true): FlatTask[
       lowVolume: task.lowVolume === true,
       projectName,
       projectColor,
+      groupId,
       parentText,
     });
   };
 
   state.projects.forEach((p) => {
     p.tasks.forEach((t) => {
-      push(t, `p:${p.id}:${t.id}`, p.name, p.color, null);
+      push(t, `p:${p.id}:${t.id}`, p.name, p.color, p.group ?? null, null);
       if (!includeSubtasks) return;
       subtasksOf(t).forEach((sub) => {
-        push(sub, `p:${p.id}:${t.id}:${sub.id}`, p.name, p.color, t.text);
+        push(sub, `p:${p.id}:${t.id}:${sub.id}`, p.name, p.color, p.group ?? null, t.text);
       });
     });
   });
 
   state.generalTasks.forEach((t) => {
-    push(t, `g:${t.id}`, null, null, null);
+    push(t, `g:${t.id}`, null, null, null, null);
     if (!includeSubtasks) return;
     subtasksOf(t).forEach((sub) => {
-      push(sub, `g:${t.id}:${sub.id}`, null, null, t.text);
+      push(sub, `g:${t.id}:${sub.id}`, null, null, null, t.text);
     });
   });
 
@@ -211,4 +213,37 @@ export function trashTypeLabel(item: TrashItem, label: (key: string) => string):
     case 'recipient': return label('term.recipient');
     default: return 'Item';
   }
+}
+
+export function getGroup(state: AppState, id: string | null | undefined): Group | null {
+  if (!id) return null;
+  return state.groups.find((g) => g.id === id) ?? null;
+}
+
+export interface GroupBucket<T> {
+  group: Group | null;
+  items: T[];
+}
+
+/**
+ * Splits a list into one bucket per group, in the order groups are configured,
+ * with anything ungrouped last. Empty buckets are dropped.
+ */
+export function bucketByGroup<T>(
+  state: AppState,
+  items: T[],
+  groupOf: (item: T) => string | null,
+): GroupBucket<T>[] {
+  const buckets: GroupBucket<T>[] = state.groups.map((group) => ({ group, items: [] }));
+  const ungrouped: GroupBucket<T> = { group: null, items: [] };
+  const index = new Map(state.groups.map((g, i) => [g.id, i]));
+
+  items.forEach((item) => {
+    const id = groupOf(item);
+    const at = id === null ? undefined : index.get(id);
+    if (at === undefined) ungrouped.items.push(item);
+    else buckets[at].items.push(item);
+  });
+
+  return [...buckets, ungrouped].filter((b) => b.items.length > 0);
 }

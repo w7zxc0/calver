@@ -1,7 +1,5 @@
 import type { Preferences, Theme } from './types';
 
-export const STORAGE_KEY = 'nsg-ops-state';
-
 export const ME_ID = '__me__';
 
 export const WEEKDAYS: { label: string; dow: number }[] = [
@@ -14,10 +12,11 @@ export const WEEKDAYS: { label: string; dow: number }[] = [
   { label: 'Sunday', dow: 0 },
 ];
 
-/** How many of each thing the starter workspace is seeded with. */
+/** How many of each thing a new system is seeded with. */
 export const SEED_COUNTS = {
   departments: 3,
   membersPerDepartment: 3,
+  groups: 2,
   projects: 6,
   tasksPerProject: 3,
   subtasksPerTask: 2,
@@ -89,6 +88,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   showLowVolumeInDue: false,
   showCompletedTasks: false,
   showSubtasksOnDashboard: true,
+  groupProjects: true,
   projectsView: 'kanban',
   kanbanColumns: 3,
   projectStripes: true,

@@ -9,19 +9,23 @@ import { AppearanceBlock } from './AppearanceBlock';
 import { BackupBlock } from './BackupBlock';
 import { CompletedBlock } from './CompletedBlock';
 import { DepartmentsBlock } from './DepartmentsBlock';
+import { GroupsBlock } from './GroupsBlock';
 import { LabelsBlock } from './LabelsBlock';
 import { LayoutBlock } from './LayoutBlock';
 import { MembersBlock } from './MembersBlock';
 import { RecipientsBlock } from './RecipientsBlock';
+import { SharingBlock } from './SharingBlock';
 import { StatusesBlock } from './StatusesBlock';
 import { TrashBlock } from './TrashBlock';
 
 const SECTIONS: { id: ManageSection; labelKey: string; blurb: string }[] = [
   { id: 'people', labelKey: 'manage.people', blurb: 'Who is on the board and how they are grouped.' },
   { id: 'workflow', labelKey: 'manage.workflow', blurb: 'The stages work moves through, and who follow-ups go to.' },
+  { id: 'groups', labelKey: 'manage.groups', blurb: 'Bands projects are filed under, and which project sits in each.' },
   { id: 'appearance', labelKey: 'manage.appearance', blurb: 'Colours, density, and how cards are marked out.' },
   { id: 'labels', labelKey: 'manage.labels', blurb: 'Rename any wording in the interface.' },
   { id: 'layout', labelKey: 'manage.layout', blurb: 'Show, hide, and resize the windows.' },
+  { id: 'sharing', labelKey: 'manage.sharing', blurb: 'Who else can open this system.' },
   { id: 'data', labelKey: 'manage.data', blurb: 'Completed work, trash, and backups.' },
 ];
 
@@ -62,11 +66,15 @@ export function ManageView() {
         />
       )}
 
+      {section === 'groups' && <GroupsBlock />}
+
       {section === 'appearance' && <AppearanceBlock />}
 
       {section === 'labels' && <LabelsBlock />}
 
       {section === 'layout' && <LayoutBlock />}
+
+      {section === 'sharing' && <SharingBlock />}
 
       {section === 'data' && (
         <>

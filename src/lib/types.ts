@@ -24,6 +24,13 @@ export interface Recipient {
   name: string;
 }
 
+/** A band projects can be filed under, used to group the board. */
+export interface Group {
+  id: ID;
+  name: string;
+  color: string;
+}
+
 /** '' = unassigned, ME_ID = myself, otherwise a Member id. */
 export type AssigneeId = string;
 
@@ -44,6 +51,8 @@ export interface Project {
   name: string;
   owner: string;
   status: ID;
+  /** Group this project is filed under, or null for ungrouped. */
+  group: ID | null;
   notes: string;
   open: boolean;
   /** Accent colour that makes the card distinguishable at a glance. */
@@ -110,6 +119,8 @@ export interface Preferences {
   showCompletedTasks: boolean;
   /** Subtasks are listed on the dashboard alongside their parents. */
   showSubtasksOnDashboard: boolean;
+  /** Group task lists and the projects screen by project group. */
+  groupProjects: boolean;
   projectsView: 'kanban' | 'list';
   /** Project cards per row in the kanban view. */
   kanbanColumns: number;
@@ -120,6 +131,7 @@ export interface Preferences {
 export interface AppState {
   members: Member[];
   departments: Department[];
+  groups: Group[];
   statuses: Status[];
   recipients: Recipient[];
   uiColors: UiColors;
@@ -139,6 +151,7 @@ export interface FlatTask {
   assignee: AssigneeId;
   projectName: string | null;
   projectColor: string | null;
+  groupId: ID | null;
   lowVolume: boolean;
   /** Set on subtasks, naming the task they sit under. */
   parentText: string | null;
@@ -146,4 +159,27 @@ export interface FlatTask {
 
 export type ViewId = 'dashboard' | 'projects' | 'manage';
 
-export type ManageSection = 'people' | 'workflow' | 'appearance' | 'labels' | 'layout' | 'data';
+export type ManageSection =
+  | 'people' | 'workflow' | 'groups' | 'appearance' | 'labels' | 'layout' | 'sharing' | 'data';
+
+export interface AuthUser {
+  id: string;
+  username: string;
+}
+
+export type SystemRole = 'owner' | 'editor';
+
+export interface SystemSummary {
+  id: string;
+  name: string;
+  role: SystemRole;
+  ownerUsername: string | null;
+  memberCount: number;
+  updatedAt: string;
+}
+
+export interface SystemMember {
+  userId: string;
+  username: string;
+  role: SystemRole;
+}

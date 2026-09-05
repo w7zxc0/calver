@@ -31,6 +31,7 @@ body{
 }
 .mono{font-family:'Lato',ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums;}
 
+/* Kept for the standalone screens (loading, errors) that render without a board. */
 .shell{ max-width:980px; margin:0 auto; padding:28px 20px 90px; }
 
 header.top{
@@ -234,6 +235,7 @@ input:focus, select:focus, textarea:focus, button:focus-visible{ outline:2px sol
 @media(max-width:480px){
   header.top h1{ font-size:17px; line-height:1.25; }
   .shell{ padding:20px 14px 90px; }
+  .board{ padding:16px 12px 80px; }
 }
 
 /* Grids of manage blocks stack, so the gap between rows comes from here. */
@@ -479,3 +481,171 @@ textarea.inline-edit{ resize:vertical; line-height:1.4; }
 }
 .task-row.is-low-volume .t-text{ color:var(--ink-soft); }
 .preset-on{ border-color:var(--accent); color:var(--ink); }
+
+/* ============================================================
+   Workbench: left navigation beside the board
+   ============================================================ */
+.boot{ padding:60px 20px; text-align:center; color:var(--ink-soft); }
+
+.workbench{ display:flex; min-height:100vh; align-items:stretch; }
+
+.sidebar{
+  flex:0 0 244px; width:244px; background:var(--panel); border-right:1px solid var(--line);
+  display:flex; flex-direction:column; gap:14px; padding:18px 12px 14px;
+  position:sticky; top:0; height:100vh; overflow-y:auto;
+}
+.sidebar-head{ display:flex; align-items:center; justify-content:space-between; padding:0 6px; }
+.wordmark{ font-weight:900; font-size:17px; letter-spacing:-0.01em; color:var(--ink); }
+.sidebar-close{
+  display:none; background:none; border:none; color:var(--ink-faint); font-size:20px;
+  cursor:pointer; line-height:1; padding:0 4px;
+}
+
+.side-views{ display:flex; flex-direction:column; gap:2px; }
+.side-view{
+  display:flex; align-items:center; gap:9px; width:100%; text-align:left; background:none;
+  border:none; color:var(--ink-soft); font-family:inherit; font-size:13px; font-weight:600;
+  padding:9px 10px; border-radius:8px; cursor:pointer; transition:background .12s ease, color .12s ease;
+}
+.side-view:hover{ background:var(--panel-raised); color:var(--ink); }
+.side-view.active{ background:var(--accent); color:var(--paper); }
+.side-icon{ width:16px; text-align:center; font-size:12px; opacity:.9; }
+
+.side-section{ display:flex; flex-direction:column; gap:6px; min-height:0; }
+.side-section-head{
+  display:flex; align-items:center; justify-content:space-between; padding:0 8px;
+  font-size:10.5px; text-transform:uppercase; letter-spacing:0.06em; font-weight:700; color:var(--ink-faint);
+}
+.side-add{
+  background:none; border:none; color:var(--ink-faint); font-size:16px; line-height:1;
+  cursor:pointer; padding:0 4px; border-radius:5px;
+}
+.side-add:hover{ color:var(--ink); background:var(--panel-raised); }
+.side-filter{
+  padding:6px 9px; border:1px solid var(--line); background:var(--paper); color:var(--ink);
+  border-radius:7px; font-family:inherit; font-size:12px;
+}
+.side-systems{ display:flex; flex-direction:column; gap:2px; }
+.side-empty{ color:var(--ink-faint); font-size:12px; padding:6px 8px; }
+
+.side-system{
+  display:flex; align-items:center; gap:2px; border-radius:8px; padding-right:2px;
+  transition:background .12s ease;
+}
+.side-system:hover{ background:var(--panel-raised); }
+.side-system.active{ background:var(--panel-raised); box-shadow:inset 2px 0 0 var(--accent); }
+.side-system-main{
+  flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; align-items:flex-start;
+  background:none; border:none; cursor:pointer; font-family:inherit; text-align:left; padding:8px 8px;
+}
+.side-system-name{
+  font-size:12.5px; font-weight:600; color:var(--ink); max-width:100%;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.side-system-meta{
+  font-size:10.5px; color:var(--ink-faint); max-width:100%;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.side-system.active .side-system-name{ color:var(--ink); }
+
+.side-foot{
+  margin-top:auto; padding-top:12px; border-top:1px solid var(--line);
+  display:flex; align-items:center; gap:8px; justify-content:space-between;
+}
+.side-user{
+  display:flex; align-items:center; gap:7px; font-size:12px; color:var(--ink-soft);
+  min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.side-avatar{
+  width:22px; height:22px; border-radius:50%; background:var(--accent); color:var(--paper);
+  display:inline-flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; flex:none;
+}
+.side-signout{ padding:5px 9px; font-size:11.5px; }
+.sidebar-scrim{ display:none; }
+
+.workspace{ flex:1; min-width:0; }
+.board{ max-width:1180px; margin:0 auto; padding:24px 22px 80px; }
+.top-left{ display:flex; align-items:center; gap:10px; min-width:0; }
+.board-name{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.menu-toggle{
+  display:none; background:none; border:1px solid var(--line); color:var(--ink-soft);
+  border-radius:7px; padding:5px 9px; font-size:13px; cursor:pointer;
+}
+.shared-chip{
+  font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em;
+  color:var(--blue); background:var(--blue-bg); padding:3px 8px; border-radius:6px; white-space:nowrap;
+}
+.foot-role{ color:var(--ink-faint); }
+
+@media(max-width:900px){
+  .sidebar{
+    position:fixed; top:0; left:0; z-index:60; transform:translateX(-100%);
+    transition:transform .18s ease; box-shadow:0 0 40px rgba(0,0,0,0.4);
+  }
+  .sidebar.open{ transform:translateX(0); }
+  .sidebar-close{ display:block; }
+  .menu-toggle{ display:inline-block; }
+  .sidebar-scrim{
+    display:block; position:fixed; inset:0; z-index:50; background:rgba(0,0,0,0.45);
+  }
+  .board{ padding:20px 16px 80px; }
+}
+
+/* ============================================================
+   Sign in / sign up
+   ============================================================ */
+.auth-screen{
+  min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
+}
+.auth-card{
+  width:100%; max-width:380px; background:var(--panel); border:1px solid var(--line);
+  border-radius:14px; padding:28px 26px;
+}
+.auth-title{ font-size:24px; font-weight:900; margin:0; letter-spacing:-0.01em; }
+.auth-sub{ color:var(--ink-soft); font-size:13px; margin:6px 0 20px; }
+.auth-form{ display:flex; flex-direction:column; gap:12px; }
+.auth-field{ display:flex; flex-direction:column; gap:5px; }
+.auth-field span{
+  font-size:10.5px; text-transform:uppercase; letter-spacing:0.06em; font-weight:700; color:var(--ink-faint);
+}
+.auth-field input{
+  padding:10px 11px; border:1px solid var(--line); background:var(--paper); color:var(--ink);
+  border-radius:8px; font-family:inherit; font-size:13.5px;
+}
+.auth-error{
+  color:var(--red); background:var(--red-bg); border-radius:7px; padding:8px 10px; font-size:12.5px;
+}
+.auth-submit{ margin-top:4px; padding:11px 14px; font-size:13px; }
+.auth-submit:disabled{ opacity:.6; cursor:default; }
+.auth-switch{ margin-top:16px; font-size:12.5px; color:var(--ink-soft); text-align:center; }
+.auth-switch button{
+  background:none; border:none; color:var(--accent); font-family:inherit; font-size:12.5px;
+  font-weight:700; cursor:pointer; text-decoration:underline; padding:0;
+}
+.auth-note{ margin:16px 0 0; font-size:11px; color:var(--ink-faint); line-height:1.5; }
+
+/* ============================================================
+   Groups
+   ============================================================ */
+.group-block + .group-block{ border-top:1px solid var(--line); }
+.group-head{
+  display:flex; align-items:center; gap:8px; padding:8px 14px; border-left:3px solid transparent;
+  background:var(--panel-raised); font-size:10.5px; text-transform:uppercase;
+  letter-spacing:0.06em; font-weight:700;
+}
+.group-dot{ width:8px; height:8px; border-radius:50%; flex:none; }
+.group-name{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.group-head .count{
+  margin-left:auto; background:var(--slate-bg); color:var(--ink-soft);
+  font-size:10.5px; padding:1px 8px; border-radius:9px; font-weight:700;
+}
+
+.kanban-group + .kanban-group{ margin-top:12px; }
+.kanban-group-head{
+  display:flex; align-items:center; gap:8px; margin-bottom:8px;
+  font-size:10.5px; text-transform:uppercase; letter-spacing:0.06em; font-weight:700; color:var(--ink-faint);
+}
+.kanban-group-head .count{
+  background:var(--slate-bg); color:var(--ink-soft); font-size:10.5px;
+  padding:1px 7px; border-radius:9px; font-weight:700;
+}

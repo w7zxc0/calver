@@ -8,7 +8,7 @@ import { newTask } from '@/lib/utils';
 import { useApp } from '@/components/AppProvider';
 import { PanelHeader } from '@/components/ui/PanelHeader';
 import { MemberSelect, ProjectSelect, QuickDateSelect } from '@/components/ui/Selects';
-import { DashboardTaskRow } from './DashboardTaskRow';
+import { TaskList } from './TaskList';
 
 export function DuePanel() {
   const { state, prefs, update, setPref, label } = useApp();
@@ -54,10 +54,15 @@ export function DuePanel() {
             checked: prefs.showSubtasksOnDashboard,
             onSelect: () => setPref('showSubtasksOnDashboard', !prefs.showSubtasksOnDashboard),
           },
+          {
+            label: `Group by ${label('term.group').toLowerCase()}`,
+            checked: prefs.groupProjects,
+            onSelect: () => setPref('groupProjects', !prefs.groupProjects),
+          },
         ]}
       />
       {listed.length ? (
-        listed.map((t) => <DashboardTaskRow key={t.ref} task={t} />)
+        <TaskList tasks={listed} />
       ) : (
         <div className="empty">Nothing listed. Add {label('term.task').toLowerCase()} below.</div>
       )}

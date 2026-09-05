@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Calver - Management',
-  description: 'Projects, tasks, follow-ups and team workload for Calver.',
+  title: 'Calver',
+  description: 'Projects, tasks, follow-ups and team workload, one system at a time.',
 };
 
 export const viewport: Viewport = {

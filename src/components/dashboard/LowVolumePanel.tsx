@@ -7,7 +7,7 @@ import { newTask } from '@/lib/utils';
 import { useApp } from '@/components/AppProvider';
 import { PanelHeader } from '@/components/ui/PanelHeader';
 import { MemberSelect, ProjectSelect } from '@/components/ui/Selects';
-import { DashboardTaskRow } from './DashboardTaskRow';
+import { TaskList } from './TaskList';
 
 /**
  * Everything tagged as low volume, kept out of the main due list so small
@@ -54,7 +54,7 @@ export function LowVolumePanel() {
         ]}
       />
       {listed.length ? (
-        listed.map((t) => <DashboardTaskRow key={t.ref} task={t} />)
+        <TaskList tasks={listed} />
       ) : (
         <div className="empty">
           Nothing tagged yet. Use a {label('term.task').toLowerCase()}&apos;s ⋯ menu to tag it as{' '}

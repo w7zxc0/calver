@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { getStatus } from '@/lib/selectors';
+import { bucketByGroup, getStatus } from '@/lib/selectors';
 import type { Project, Status } from '@/lib/types';
 import { hexA, randomHex, uid } from '@/lib/utils';
 import { useApp } from '@/components/AppProvider';
@@ -82,6 +82,11 @@ export function ProjectsView() {
                 onSelect: () => setPref('showCompletedTasks', !prefs.showCompletedTasks),
               },
               {
+                label: `Group by ${label('term.group').toLowerCase()}`,
+                checked: prefs.groupProjects,
+                onSelect: () => setPref('groupProjects', !prefs.groupProjects),
+              },
+              {
                 label: 'Colour stripes',
                 checked: prefs.projectStripes,
                 onSelect: () => setPref('projectStripes', !prefs.projectStripes),
@@ -141,8 +146,10 @@ function StatusBand({
   onDropTask: (srcPid: string, taskId: string, destPid: string) => void;
   onDropProject: (projectId: string, statusId: string) => void;
 }) {
-  const { update, label } = useApp();
+  const { state, prefs, update, label } = useApp();
   const [dragOver, setDragOver] = useState(false);
+  const grouped = prefs.groupProjects && state.groups.length > 0;
+  const buckets = bucketByGroup(state, projects, (p) => p.group ?? null);
 
   const addProject = () =>
     update((draft) => {
@@ -151,6 +158,7 @@ function StatusBand({
         name: `${label('term.project')} ${draft.projects.length + 1}`,
         owner: '',
         status: status.id,
+        group: null,
         notes: '',
         tasks: [],
         open: true,
@@ -194,6 +202,24 @@ function StatusBand({
 
       {projects.length === 0 ? (
         <div className="kanban-empty">Drop a {label('term.project').toLowerCase()} here.</div>
+      ) : grouped ? (
+        buckets.map((bucket) => (
+          <div className="kanban-group" key={bucket.group?.id ?? '__ungrouped__'}>
+            <div className="kanban-group-head">
+              <span
+                className="group-dot"
+                style={{ background: bucket.group?.color || 'var(--ink-faint)' }}
+              />
+              {bucket.group ? bucket.group.name : `No ${label('term.group').toLowerCase()}`}
+              <span className="count">{bucket.items.length}</span>
+            </div>
+            <div className="kanban-row" style={{ '--kanban-cols': columns } as React.CSSProperties}>
+              {bucket.items.map((p) => (
+                <DraggableProject key={p.id} project={p} onDropTask={onDropTask} />
+              ))}
+            </div>
+          </div>
+        ))
       ) : (
         <div className="kanban-row" style={{ '--kanban-cols': columns } as React.CSSProperties}>
           {projects.map((p) => (
@@ -260,6 +286,7 @@ function NewProjectBox() {
   const { state, update, label } = useApp();
   const [name, setName] = useState('');
   const [status, setStatus] = useState(state.statuses[0]?.id ?? '');
+  const [group, setGroup] = useState('');
   const [color, setColor] = useState(() => randomHex());
 
   const add = () => {
@@ -267,7 +294,8 @@ function NewProjectBox() {
     if (trimmed === '') return;
     update((draft) => {
       draft.projects.push({
-        id: uid(), name: trimmed, owner: '', status, notes: '', tasks: [], open: true, color,
+        id: uid(), name: trimmed, owner: '', status, group: group || null,
+        notes: '', tasks: [], open: true, color,
       });
     });
     setName('');
@@ -290,6 +318,14 @@ function NewProjectBox() {
             <option key={s.id} value={s.id}>{s.name}</option>
           ))}
         </select>
+        {state.groups.length > 0 && (
+          <select value={group} onChange={(e) => setGroup(e.target.value)} title="Group">
+            <option value="">No {label('term.group').toLowerCase()}</option>
+            {state.groups.map((g) => (
+              <option key={g.id} value={g.id}>{g.name}</option>
+            ))}
+          </select>
+        )}
         <button className="btn" type="button" onClick={add}>{label('action.addProject')}</button>
       </div>
     </div>

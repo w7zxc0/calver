@@ -3,13 +3,13 @@ import {
 } from './constants';
 import { plus, todayISO } from './date';
 import type {
-  AppState, Department, FollowUp, Member, Preferences, Project, Recipient, Status, Task,
+  AppState, Department, FollowUp, Group, Member, Preferences, Project, Recipient, Status, Task,
 } from './types';
 import { clone, shuffledPalette, uid } from './utils';
 
 /**
- * The starter workspace is deliberately generic — Department 1, Member 1,
- * Project 1 — so the board can be renamed into whatever the user runs.
+ * A new system starts deliberately generic — Department 1, Member 1, Project 1
+ * — so the board can be renamed into whatever the user runs.
  */
 export function freshState(): AppState {
   const departments: Department[] = Array.from(
@@ -33,12 +33,19 @@ export function freshState(): AppState {
     (_, i): Recipient => ({ id: uid(), name: `Recipient ${i + 1}` }),
   );
 
+  const groupColors = shuffledPalette(SEED_COUNTS.groups);
+  const groups: Group[] = Array.from(
+    { length: SEED_COUNTS.groups },
+    (_, i): Group => ({ id: uid(), name: `Group ${i + 1}`, color: groupColors[i] }),
+  );
+
   const projectColors = shuffledPalette(SEED_COUNTS.projects);
   const projects: Project[] = Array.from({ length: SEED_COUNTS.projects }, (_, p): Project => ({
     id: uid(),
     name: `Project ${p + 1}`,
     owner: '',
     status: statuses[p % statuses.length].id,
+    group: groups[p % groups.length].id,
     notes: '',
     open: p === 0,
     color: projectColors[p],
@@ -78,6 +85,7 @@ export function freshState(): AppState {
   return {
     members,
     departments,
+    groups,
     statuses,
     recipients,
     uiColors: { ...DEFAULT_UI_COLORS },
@@ -89,7 +97,7 @@ export function freshState(): AppState {
   };
 }
 
-/** Fills in anything a stored workspace predates, so old saves keep loading. */
+/** Fills in anything a stored system predates, so old saves keep loading. */
 function migratePreferences(input: unknown): Preferences {
   const base = clone(DEFAULT_PREFERENCES);
   if (!input || typeof input !== 'object') return base;
@@ -101,6 +109,7 @@ function migratePreferences(input: unknown): Preferences {
     splits: p.splits && typeof p.splits === 'object' ? { ...p.splits } : base.splits,
     hidden: p.hidden && typeof p.hidden === 'object' ? { ...p.hidden } : base.hidden,
     density: p.density === 'compact' ? 'compact' : 'comfortable',
+    groupProjects: p.groupProjects !== false,
     showTasksWithoutDue: p.showTasksWithoutDue === true,
     showCompletedInDue: p.showCompletedInDue === true,
     showLowVolumeInDue: p.showLowVolumeInDue === true,
@@ -137,6 +146,7 @@ export function migrate(input: unknown): AppState {
   const s = input as Partial<AppState> & { members?: unknown };
 
   if (!s.departments) s.departments = [];
+  if (!s.groups) s.groups = [];
   if (!s.statuses || s.statuses.length === 0) {
     s.statuses = DEFAULT_STATUS_SEED.map((st): Status => ({ id: uid(), ...st }));
   }
@@ -182,6 +192,8 @@ export function migrate(input: unknown): AppState {
     if (!p.color) p.color = projectColors[i % projectColors.length];
     if (p.owner === undefined) p.owner = '';
     if (p.notes === undefined) p.notes = '';
+    if (p.group === undefined) p.group = null;
+    if (p.group && !state.groups.some((g) => g.id === p.group)) p.group = null;
     p.tasks.forEach((t) => migrateTask(t, convertAssignee));
     if (!p.status || !state.statuses.some((st) => st.id === p.status)) {
       const match = state.statuses.find(
