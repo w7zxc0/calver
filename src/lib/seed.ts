@@ -101,6 +101,8 @@ function migratePreferences(input: unknown): Preferences {
     splits: p.splits && typeof p.splits === 'object' ? { ...p.splits } : base.splits,
     hidden: p.hidden && typeof p.hidden === 'object' ? { ...p.hidden } : base.hidden,
     density: p.density === 'compact' ? 'compact' : 'comfortable',
+    taskGrouping:
+      p.taskGrouping === 'status' || p.taskGrouping === 'assignee' ? p.taskGrouping : 'none',
     showTasksWithoutDue: p.showTasksWithoutDue === true,
     showCompletedInDue: p.showCompletedInDue === true,
     showLowVolumeInDue: p.showLowVolumeInDue === true,

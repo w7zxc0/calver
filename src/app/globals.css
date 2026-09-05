@@ -479,3 +479,20 @@ textarea.inline-edit{ resize:vertical; line-height:1.4; }
 }
 .task-row.is-low-volume .t-text{ color:var(--ink-soft); }
 .preset-on{ border-color:var(--accent); color:var(--ink); }
+
+/* ============================================================
+   Grouped task windows
+   ============================================================ */
+.group-block + .group-block{ border-top:1px solid var(--line); }
+.group-head{
+  display:flex; align-items:center; gap:8px; padding:8px 14px;
+  border-left:3px solid transparent; background:var(--panel-raised);
+  font-size:10.5px; text-transform:uppercase; letter-spacing:0.06em; font-weight:700;
+}
+.group-dot{ width:8px; height:8px; border-radius:50%; flex:none; }
+.group-name{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.group-head .count{
+  margin-left:auto; background:var(--slate-bg); color:var(--ink-soft);
+  font-size:10.5px; padding:1px 8px; border-radius:9px; font-weight:700;
+}
+.density-compact .group-head{ padding:6px 12px; }

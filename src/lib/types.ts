@@ -91,6 +91,9 @@ export interface Theme {
 
 export type Density = 'comfortable' | 'compact';
 
+/** How the dashboard task windows split their rows. */
+export type TaskGrouping = 'none' | 'status' | 'assignee';
+
 export interface Preferences {
   /** Overrides for any label key; anything missing falls back to the default. */
   labels: Record<string, string>;
@@ -100,6 +103,8 @@ export interface Preferences {
   /** Keyed by panel or stat id; true means hidden. */
   hidden: Record<string, boolean>;
   density: Density;
+  /** Grouping applied to the dashboard task windows. */
+  taskGrouping: TaskGrouping;
   /** Whether the due window also lists tasks that have no due date. */
   showTasksWithoutDue: boolean;
   /** Whether completed tasks stay visible in the due window. */
@@ -139,6 +144,8 @@ export interface FlatTask {
   assignee: AssigneeId;
   projectName: string | null;
   projectColor: string | null;
+  /** Status of the project this task belongs to; null for general tasks. */
+  statusId: string | null;
   lowVolume: boolean;
   /** Set on subtasks, naming the task they sit under. */
   parentText: string | null;

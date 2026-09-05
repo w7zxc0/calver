@@ -1,8 +1,15 @@
 'use client';
 
 import { SPLITS, TOGGLEABLE_PARTS } from '@/lib/labels';
+import type { TaskGrouping } from '@/lib/types';
 import { useApp } from '@/components/AppProvider';
 import { ManageBlock } from './ManageBlock';
+
+const TASK_GROUPINGS: { mode: TaskGrouping; text: (label: (key: string) => string) => string }[] = [
+  { mode: 'none', text: () => 'No grouping' },
+  { mode: 'status', text: (label) => `By ${label('term.status').toLowerCase()}` },
+  { mode: 'assignee', text: (label) => `By ${label('term.assignee').toLowerCase()}` },
+];
 
 const SPLIT_ROWS: { id: string; name: string }[] = [
   { id: SPLITS.dashTop, name: 'Dashboard — Due / Follow Up' },
@@ -48,6 +55,26 @@ export function LayoutBlock() {
           </div>
         ))}
       </ManageBlock>
+
+      <div className="manage-block">
+        <h2><span className="panel-title">{label('tab.dashboard')} task windows</span></h2>
+        <div className="preset-row">
+          {TASK_GROUPINGS.map((option) => (
+            <button
+              key={option.mode}
+              type="button"
+              className={`preset${prefs.taskGrouping === option.mode ? ' preset-on' : ''}`}
+              onClick={() => setPref('taskGrouping', option.mode)}
+            >
+              {option.text(label)}
+            </button>
+          ))}
+        </div>
+        <div className="manage-note" style={{ marginTop: 0 }}>
+          Splits the task windows into headed sections. A task takes the status of the
+          {' '}{label('term.project').toLowerCase()} it belongs to.
+        </div>
+      </div>
 
       <div className="manage-block">
         <h2><span className="panel-title">{label('tab.projects')} view</span></h2>

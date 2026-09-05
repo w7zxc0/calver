@@ -41,6 +41,7 @@ export const LABEL_GROUPS: { group: string; keys: { key: string; text: string; h
       { key: 'term.member', text: 'Team member' },
       { key: 'term.department', text: 'Department' },
       { key: 'term.status', text: 'Status' },
+      { key: 'term.assignee', text: 'Assignee' },
       { key: 'term.recipient', text: 'Recipient' },
       { key: 'term.followUp', text: 'Follow-up' },
     ],

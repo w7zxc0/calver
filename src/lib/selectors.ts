@@ -1,6 +1,6 @@
 import { ME_ID } from './constants';
 import { daysUntil } from './date';
-import type { AppState, FlatTask, Member, Status, Task, TrashItem } from './types';
+import type { AppState, FlatTask, Member, Status, Task, TaskGrouping, TrashItem } from './types';
 
 export function getMember(
   state: AppState,
@@ -53,6 +53,7 @@ export function allTasksFlat(state: AppState, includeSubtasks = true): FlatTask[
     ref: string,
     projectName: string | null,
     projectColor: string | null,
+    statusId: string | null,
     parentText: string | null,
   ) => {
     out.push({
@@ -64,25 +65,26 @@ export function allTasksFlat(state: AppState, includeSubtasks = true): FlatTask[
       lowVolume: task.lowVolume === true,
       projectName,
       projectColor,
+      statusId,
       parentText,
     });
   };
 
   state.projects.forEach((p) => {
     p.tasks.forEach((t) => {
-      push(t, `p:${p.id}:${t.id}`, p.name, p.color, null);
+      push(t, `p:${p.id}:${t.id}`, p.name, p.color, p.status || null, null);
       if (!includeSubtasks) return;
       subtasksOf(t).forEach((sub) => {
-        push(sub, `p:${p.id}:${t.id}:${sub.id}`, p.name, p.color, t.text);
+        push(sub, `p:${p.id}:${t.id}:${sub.id}`, p.name, p.color, p.status || null, t.text);
       });
     });
   });
 
   state.generalTasks.forEach((t) => {
-    push(t, `g:${t.id}`, null, null, null);
+    push(t, `g:${t.id}`, null, null, null, null);
     if (!includeSubtasks) return;
     subtasksOf(t).forEach((sub) => {
-      push(sub, `g:${t.id}:${sub.id}`, null, null, t.text);
+      push(sub, `g:${t.id}:${sub.id}`, null, null, null, t.text);
     });
   });
 
@@ -211,4 +213,64 @@ export function trashTypeLabel(item: TrashItem, label: (key: string) => string):
     case 'recipient': return label('term.recipient');
     default: return 'Item';
   }
+}
+
+/** One heading plus the tasks under it, for a grouped task window. */
+export interface TaskBucket {
+  key: string;
+  name: string;
+  /** Null leaves the heading in the muted default colour. */
+  color: string | null;
+  items: FlatTask[];
+}
+
+export interface GroupingLabels {
+  myself: string;
+  unassigned: string;
+  status: string;
+}
+
+/**
+ * Splits a task list into buckets. Statuses and members keep their configured
+ * order so the headings match the rest of the board, and the catch-all bucket
+ * (no status, or nobody assigned) always comes last. Empty buckets are dropped.
+ */
+export function groupTasks(
+  state: AppState,
+  tasks: FlatTask[],
+  mode: TaskGrouping,
+  labels: GroupingLabels,
+): TaskBucket[] {
+  if (mode === 'none') return [{ key: 'all', name: '', color: null, items: tasks }];
+
+  const buckets: TaskBucket[] = [];
+  const index = new Map<string, number>();
+
+  const bucket = (key: string, name: string, color: string | null): TaskBucket => {
+    const at = index.get(key);
+    if (at !== undefined) return buckets[at];
+    index.set(key, buckets.length);
+    const created: TaskBucket = { key, name, color, items: [] };
+    buckets.push(created);
+    return created;
+  };
+
+  if (mode === 'status') {
+    state.statuses.forEach((s) => bucket(s.id, s.name, s.color));
+    bucket('__none__', `No ${labels.status.toLowerCase()}`, null);
+    tasks.forEach((t) => {
+      const target = t.statusId && index.has(t.statusId) ? t.statusId : '__none__';
+      bucket(target, '', null).items.push(t);
+    });
+  } else {
+    bucket(ME_ID, labels.myself, null);
+    state.members.forEach((m) => bucket(m.id, m.name, m.color));
+    bucket('__none__', labels.unassigned, null);
+    tasks.forEach((t) => {
+      const target = t.assignee && index.has(t.assignee) ? t.assignee : '__none__';
+      bucket(target, '', null).items.push(t);
+    });
+  }
+
+  return buckets.filter((b) => b.items.length > 0);
 }

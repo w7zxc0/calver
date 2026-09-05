@@ -84,6 +84,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   splits: {},
   hidden: {},
   density: 'comfortable',
+  taskGrouping: 'none',
   showTasksWithoutDue: false,
   showCompletedInDue: false,
   showLowVolumeInDue: false,
